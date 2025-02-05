@@ -31,7 +31,15 @@ jobs:
       run: pdm install
     
     - name: Build binary
+      if: matrix.os != 'windows-latest'
       run: pdm run build-binary
+
+    - name: Build binary (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: cmd
+      run: |
+        set PYTHONPATH=src
+        pdm run pyinstaller --name aicommit --onefile --paths src src/aicommit/cli/main.py
 
     - name: Rename binary for Windows
       if: matrix.os == 'windows-latest'
@@ -81,4 +89,4 @@ jobs:
             binaries-ubuntu-latest/aicommit-linux
           draft: false
           prerelease: false
-          generate_release_notes: true 
+          generate_release_notes: true
