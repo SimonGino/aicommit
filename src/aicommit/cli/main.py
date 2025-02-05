@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from aicommit.models.config import AIConfig, Settings
+from aicommit.models.base import CommitInfo
 from aicommit.models.qwen import QwenProvider
 from aicommit.utils.git import commit_changes, get_current_branch, get_repo, get_staged_changes
 
@@ -51,11 +52,11 @@ async def async_commit(
         
         with console.status("[bold blue]Generating commit message..."):
             provider_instance = get_ai_provider(settings, provider)
-            commit_info = {
-                "files_changed": staged_files,
-                "diff_content": diff_content,
-                "branch_name": branch_name,
-            }
+            commit_info = CommitInfo(
+                files_changed=staged_files,
+                diff_content=diff_content,
+                branch_name=branch_name
+            )
             commit_message = await provider_instance.generate_commit_message(commit_info)
         
         # Show the generated message
