@@ -25,7 +25,7 @@ fi
 
 # 获取最新版本
 echo "Fetching latest release..."
-LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/YOUR_USERNAME/aicommit/releases/latest | grep "browser_download_url.*${BINARY_NAME}" | cut -d '"' -f 4)
+LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/SimonGino/aicommit/releases/latest | grep "browser_download_url.*${BINARY_NAME}" | cut -d '"' -f 4)
 
 if [[ -z "${LATEST_RELEASE_URL}" ]]; then
     echo "Error: Could not find latest release"

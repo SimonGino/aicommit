@@ -15,7 +15,7 @@ if (-not (Test-Path $InstallDir)) {
 
 # 获取最新版本
 Write-Host "Fetching latest release..."
-$LatestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/YOUR_USERNAME/aicommit/releases/latest"
+$LatestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/SimonGino/aicommit/releases/latest"
 $DownloadUrl = $LatestRelease.assets | Where-Object { $_.name -eq "aicommit-windows.exe" } | Select-Object -ExpandProperty browser_download_url
 
 if (-not $DownloadUrl) {
