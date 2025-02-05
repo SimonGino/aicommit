@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10']
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install PDM
+      run: |
+        python -m pip install --upgrade pip
+        pip install pdm
+    
+    - name: Install dependencies
+      run: pdm install
+    
+    - name: Build binary
+      run: pdm run build-binary
+
+    - name: Rename binary for Windows
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd dist
+        mv aicommit.exe aicommit-windows.exe
+      shell: bash
+
+    - name: Rename binary for macOS
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd dist
+        mv aicommit aicommit-macos
+      shell: bash
+
+    - name: Rename binary for Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd dist
+        mv aicommit aicommit-linux
+      shell: bash
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: binaries-${{ matrix.os }}
+        path: dist/aicommit*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            binaries-windows-latest/aicommit-windows.exe
+            binaries-macos-latest/aicommit-macos
+            binaries-ubuntu-latest/aicommit-linux
+          draft: false
+          prerelease: false
+          generate_release_notes: true 
