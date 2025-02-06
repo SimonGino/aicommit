@@ -9,8 +9,7 @@ from rich.panel import Panel
 
 from aicommit.models.config import AIConfig, Settings
 from aicommit.models.base import CommitInfo
-from aicommit.models.qwen import QwenProvider
-from aicommit.models.deepseek import DeepseekProvider
+from aicommit.models import QwenProvider, DeepseekProvider,OpenAIProvider
 from aicommit.utils.git import commit_changes, get_current_branch, get_repo, get_staged_changes
 
 app = typer.Typer(help="AI-powered git commit message generator")
@@ -31,6 +30,8 @@ def get_ai_provider(settings: Settings, provider: Optional[str] = None):
         return QwenProvider(config)
     elif provider == "deepseek":
         return DeepseekProvider(config)
+    elif provider == "openai":
+        return OpenAIProvider(config)
     else:
         raise typer.BadParameter(f"Provider {provider} not implemented yet")
 
@@ -41,10 +42,21 @@ async def async_commit(
 ):
     """Async implementation of the commit command."""
     try:
+        # 先检查是否在 git 仓库中
+        try:
+            repo = get_repo()
+        except Exception as e:
+            rprint(f"[red]Error:[/red] {str(e)}")
+            raise typer.Exit(1)
+
+        # 检查是否有暂存的更改
+        try:
+            staged_files, diff_content = get_staged_changes(repo)
+        except Exception as e:
+            rprint(f"[yellow]Error:[/yellow] {str(e)}")
+            raise typer.Exit(1)
+            
         settings = Settings.load()
-        
-        repo = get_repo()
-        staged_files, diff_content = get_staged_changes(repo)
         branch_name = get_current_branch(repo)
         
         if message:
@@ -76,8 +88,10 @@ async def async_commit(
         else:
             rprint("[yellow]Commit cancelled[/yellow]")
             
+    except typer.Exit:
+        raise
     except Exception as e:
-        rprint(f"[red]Error:[/red] {str(e)}")
+        rprint(f"[red]Error:[/red] An unexpected error occurred: {str(e)}")
         raise typer.Exit(1)
 
 
