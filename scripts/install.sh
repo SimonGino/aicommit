@@ -39,5 +39,14 @@ curl -L "${LATEST_RELEASE_URL}" -o "${INSTALL_DIR}/aicommit"
 # 设置执行权限
 chmod +x "${INSTALL_DIR}/aicommit"
 
+# 添加zsh自动补全支持
+if [[ -f "${HOME}/.zshrc" ]]; then
+    # 检查是否已经添加过自动补全配置
+    if ! grep -q "# aicommit completion" "${HOME}/.zshrc"; then
+        echo "\n# aicommit completion\neval \"$(aicommit --completion zsh)\"" >> "${HOME}/.zshrc"
+        echo "Added zsh completion support. Please restart your shell or run: source ${HOME}/.zshrc"
+    fi
+fi
+
 echo "Installation completed! You can now use 'aicommit' command."
-echo "Try 'aicommit --help' to get started." 
+echo "Try 'aicommit --help' to get started."
