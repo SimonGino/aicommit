@@ -68,12 +68,34 @@ aicommit
 
 You can also specify a different provider:
 ```bash
-aicommit --provider qwen
+aicommit --provider qwen  # Use Qwen API
+aicommit --provider deepseek  # Use DeepSeek API
 ```
 
 Or use it with a manual message (skips AI):
 ```bash
 aicommit -m "your message"
+```
+
+## Configuration
+
+### API Keys
+1. For Qwen API:
+```bash
+aicommit config --provider qwen --api-key your-api-key
+```
+
+2. For DeepSeek API:
+```bash
+aicommit config --provider deepseek --api-key your-api-key
+```
+
+### Language Settings
+You can set the output language for commit messages:
+```bash
+aicommit config --language en      # English
+aicommit config --language zh-CN   # Simplified Chinese
+aicommit config --language zh-TW   # Traditional Chinese
 ```
 
 # Language Settings

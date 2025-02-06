@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import List
+import re
 
 from pydantic import BaseModel
 
 from .config import AIConfig
+from .prompts import COMMIT_TYPES
 
 
 class CommitInfo(BaseModel):
@@ -75,3 +77,21 @@ Focus on the purpose and impact of the changes.""",
 請重點關注更改的目的和影響。"""
         }
         return prompts[self.config.language]
+
+    def _parse_commit_message(self, response: str) -> CommitMessage:
+        # Extract the first line as title
+        lines = response.strip().split('\n')
+        title = lines[0].strip()
+        
+        # Get valid commit types for current language
+        valid_types = '|'.join(COMMIT_TYPES[self.config.language].keys())
+        
+        # Validate commit message format
+        pattern = f'^({valid_types})(\([^)]+\))?: .+'
+        if not re.match(pattern, title):
+            raise ValueError(f"Invalid commit message format. Title must match pattern: {pattern}")
+            
+        # Join remaining lines as body if they exist
+        body = '\n'.join(lines[1:]).strip() if len(lines) > 1 else None
+        
+        return CommitMessage(title=title, body=body)

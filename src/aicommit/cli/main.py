@@ -10,6 +10,7 @@ from rich.panel import Panel
 from aicommit.models.config import AIConfig, Settings
 from aicommit.models.base import CommitInfo
 from aicommit.models.qwen import QwenProvider
+from aicommit.models.deepseek import DeepseekProvider
 from aicommit.utils.git import commit_changes, get_current_branch, get_repo, get_staged_changes
 
 app = typer.Typer(help="AI-powered git commit message generator")
@@ -28,7 +29,8 @@ def get_ai_provider(settings: Settings, provider: Optional[str] = None):
     
     if provider == "qwen":
         return QwenProvider(config)
-    # Future providers will be added here
+    elif provider == "deepseek":
+        return DeepseekProvider(config)
     else:
         raise typer.BadParameter(f"Provider {provider} not implemented yet")
 
