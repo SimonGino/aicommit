@@ -80,12 +80,11 @@ async def async_commit(
 
 
 @app.command()
-def commit(
-    provider: str = typer.Option(None, "--provider", "-p", help="AI provider to use"),
-    message: str = typer.Option(None, "--message", "-m", help="Manual commit message (skips AI)"),
-):
-    """Generate and create a commit with an AI-generated message."""
-    asyncio.run(async_commit(provider, message))
+@app.callback(invoke_without_command=True)
+def callback(ctx: typer.Context):
+    """If no command is provided, run the commit command."""
+    if ctx.invoked_subcommand is None:
+        asyncio.run(async_commit())
 
 
 @app.command()
@@ -110,4 +109,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

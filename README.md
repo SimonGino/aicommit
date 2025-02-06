@@ -63,19 +63,20 @@ git add .  # or specific files
 
 2. Generate and commit with AI-generated message:
 ```bash
-aicommit commit
+aicommit
 ```
 
 You can also specify a different provider:
 ```bash
-aicommit commit --provider qwen
+aicommit --provider qwen
 ```
 
 Or use it with a manual message (skips AI):
 ```bash
-aicommit commit -m "your message"
+aicommit -m "your message"
 ```
 
+```
 ## Uninstallation
 
 ### On macOS/Linux:
@@ -171,4 +172,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT 
+MIT
