@@ -1,6 +1,11 @@
 from pathlib import Path
 from typing import Literal, Optional
-import tomllib
+import sys
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 from pydantic import BaseModel, Field
 
