@@ -76,6 +76,19 @@ Or use it with a manual message (skips AI):
 aicommit -m "your message"
 ```
 
+# Language Settings
+
+You can configure the output language for commit messages. Currently supported languages:
+- English (en)
+- Simplified Chinese (zh-CN)
+- Traditional Chinese (zh-TW)
+
+```bash
+aicommit config --language en     # Set to English
+aicommit config --language zh-CN  # Set to Simplified Chinese
+aicommit config --language zh-TW  # Set to Traditional Chinese
+```
+
 ```
 ## Uninstallation
 

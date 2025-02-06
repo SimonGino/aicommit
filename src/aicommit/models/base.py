@@ -27,7 +27,8 @@ class AIProvider(ABC):
         pass
 
     def _create_prompt(self, commit_info: CommitInfo) -> str:
-        return f"""Generate a concise and descriptive git commit message for the following changes:
+        prompts = {
+            "en": f"""Generate a concise and descriptive git commit message for the following changes:
 
 Branch: {commit_info.branch_name}
 
@@ -41,4 +42,36 @@ Format the response as:
 <title>: Brief description (max 50 chars)
 <body>: Detailed explanation if needed (optional)
 
-Focus on the purpose and impact of the changes.""" 
+Focus on the purpose and impact of the changes.""",
+            "zh-CN": f"""请为以下更改生成简洁且描述性的git提交信息：
+
+分支：{commit_info.branch_name}
+
+更改的文件：
+{chr(10).join(f"- {file}" for file in commit_info.files_changed)}
+
+更改内容：
+{commit_info.diff_content}
+
+请按以下格式回复：
+<标题>：简要描述（最多50个字符）
+<正文>：需要时可添加详细说明（可选）
+
+请重点关注更改的目的和影响。""",
+            "zh-TW": f"""請為以下更改生成簡潔且描述性的git提交信息：
+
+分支：{commit_info.branch_name}
+
+更改的文件：
+{chr(10).join(f"- {file}" for file in commit_info.files_changed)}
+
+更改內容：
+{commit_info.diff_content}
+
+請按以下格式回覆：
+<標題>：簡要描述（最多50個字符）
+<正文>：需要時可添加詳細說明（可選）
+
+請重點關注更改的目的和影響。"""
+        }
+        return prompts[self.config.language]

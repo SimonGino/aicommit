@@ -24,7 +24,7 @@ def get_ai_provider(settings: Settings, provider: Optional[str] = None):
     if not api_key:
         raise typer.BadParameter(f"No API key found for {provider}. Please set it using 'aicommit config --provider {provider} --api-key <your-key>'")
     
-    config = AIConfig(provider=provider, api_key=api_key)
+    config = AIConfig(provider=provider, api_key=api_key, language=settings.language)
     
     if provider == "qwen":
         return QwenProvider(config)
@@ -89,14 +89,22 @@ def callback(ctx: typer.Context):
 
 @app.command()
 def config(
-    provider: str = typer.Option(..., "--provider", "-p", help="AI provider to configure"),
-    api_key: str = typer.Option(..., "--api-key", "-k", help="API key for the provider"),
+    provider: str = typer.Option(None, "--provider", "-p", help="AI provider to configure"),
+    api_key: str = typer.Option(None, "--api-key", "-k", help="API key for the provider"),
+    language: str = typer.Option(None, "--language", "-l", help="Set output language (en, zh-CN, zh-TW)"),
 ):
     """Configure AI provider settings."""
     try:
         settings = Settings.load()
-        settings.update_api_key(provider, api_key)
-        rprint(f"[green]✓[/green] Successfully configured {provider} API key")
+        
+        if provider and api_key:
+            settings.update_api_key(provider, api_key)
+            rprint(f"[green]✓[/green] Successfully configured {provider} API key")
+        
+        if language:
+            settings.update_language(language)
+            rprint(f"[green]✓[/green] Successfully set language to {language}")
+            
         rprint(f"[blue]Config file:[/blue] {settings.config_file}")
         
     except Exception as e:
