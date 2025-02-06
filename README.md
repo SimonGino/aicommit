@@ -135,36 +135,6 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SimonGino/aicommit/mai
 .\uninstall.ps1
 ```
 
-## Project Structure
-
-```
-aicommit/
-├── src/
-│   └── aicommit/
-│       ├── __init__.py
-│       ├── cli/          # CLI interface
-│       │   ├── __init__.py
-│       │   └── main.py
-│       ├── models/       # Data models and AI providers
-│       │   ├── __init__.py
-│       │   ├── base.py
-│       │   ├── config.py
-│       │   └── qwen.py
-│       └── utils/        # Utility functions
-│           ├── __init__.py
-│           └── git.py
-├── scripts/             # Installation scripts
-│   ├── install.sh      # Unix installation script
-│   ├── uninstall.sh    # Unix uninstallation script
-│   ├── install.ps1     # Windows installation script
-│   └── uninstall.ps1   # Windows uninstallation script
-├── tests/              # Test files
-├── .github/            # GitHub configuration
-│   └── workflows/      # GitHub Actions workflows
-├── pyproject.toml     # Project configuration
-└── README.md         # This file
-```
-
 ## Development
 
 1. Clone the repository
