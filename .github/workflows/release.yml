@@ -77,19 +77,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install PDM
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
-
-      - name: Build package
-        run: pdm build
-      
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         
@@ -103,8 +90,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}

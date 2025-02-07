@@ -1,5 +1,5 @@
 [project]
-name = "aicommit-cli"
+name = "aicommit"
 version = "0.1.0"
 description = "AI-powered git commit message generator"
 authors = []
@@ -18,7 +18,7 @@ readme = "README.md"
 license = "MIT"
 
 [project.scripts]
-ai-commit = "aicommit.cli.main:main"
+aicommit = "aicommit.cli.main:main"
 
 [build-system]
 requires = ["pdm-backend"]
