@@ -43,7 +43,7 @@ chmod +x "${INSTALL_DIR}/aicommit"
 if [[ -f "${HOME}/.zshrc" ]]; then
     # 检查是否已经添加过自动补全配置
     if ! grep -q "# aicommit completion" "${HOME}/.zshrc"; then
-        echo "\n# aicommit completion\neval \"$(aicommit --completion zsh)\"" >> "${HOME}/.zshrc"
+        echo -e "\n# aicommit completion\neval \"$(aicommit --completion zsh)\"" >> "${HOME}/.zshrc"
         echo "Added zsh completion support. Please restart your shell or run: source ${HOME}/.zshrc"
     fi
 fi
