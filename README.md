@@ -37,32 +37,33 @@
 
 ## 安装
 
-### 使用go install（推荐）
+### 快速安装（推荐）
 
+#### Linux/macOS
 ```bash
-go install github.com/SimonGino/aicommit/cmd/aicommit@latest
+curl -fsSL https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.sh | sudo bash
+```
+
+#### Windows (以管理员身份运行 PowerShell)
+```powershell
+iwr -useb https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.ps1 | iex
 ```
 
 ### 手动安装
 
-1. 克隆仓库：
-```bash
-git clone https://github.com/SimonGino/aicommit.git
-cd aicommit
-```
+1. 下载最新版本的发布包：
+   - 访问 [Releases](https://github.com/SimonGino/aicommit/releases) 页面
+   - 选择适合你系统的版本下载
 
-2. 构建：
-```bash
-go build -o aicommit cmd/aicommit/main.go
-```
-
-3. 安装到系统：
+2. 解压并安装：
 ```bash
 # Linux/macOS
-sudo ./scripts/install.sh
+tar xzf aicommit_*.tar.gz
+sudo mv aicommit /usr/local/bin/
+chmod +x /usr/local/bin/aicommit
 
-# Windows (以管理员身份运行 PowerShell)
-.\scripts\install.ps1
+# Windows
+# 解压zip文件，并将aicommit.exe添加到系统PATH
 ```
 
 ## 配置
@@ -115,10 +116,10 @@ aicommit -m "feat(auth): 添加用户认证功能"
 
 ```bash
 # Linux/macOS
-sudo ./scripts/uninstall.sh
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/uninstall.sh)"
 
 # Windows (以管理员身份运行 PowerShell)
-.\scripts\uninstall.ps1
+iwr -useb https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/uninstall.ps1 | iex
 ```
 
 ## 开发
