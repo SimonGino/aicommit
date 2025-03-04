@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional
 import asyncio
+import os
 
 import typer
 from rich import print as rprint
@@ -10,7 +11,7 @@ from rich.panel import Panel
 from aicommit.models.config import AIConfig, Settings
 from aicommit.models.base import CommitInfo
 from aicommit.models import QwenProvider, DeepseekProvider,OpenAIProvider
-from aicommit.utils.git import commit_changes, get_current_branch, get_repo, get_staged_changes
+from aicommit.utils.git import commit_changes, get_current_branch, get_repo, get_staged_changes, get_unstaged_changes
 
 app = typer.Typer(help="AI-powered git commit message generator")
 console = Console()
@@ -44,17 +45,37 @@ async def async_commit(
     try:
         # 先检查是否在 git 仓库中
         try:
-            repo = get_repo()
+            repo, work_dir = get_repo()
         except Exception as e:
             rprint(f"[red]Error:[/red] {str(e)}")
             raise typer.Exit(1)
+        
+        # 获取未暂存的更改
+        unstaged_files, unstaged_diff = get_unstaged_changes(repo, work_dir)
+        if unstaged_files:
+            rprint("\n[yellow]Unstaged changes:[/yellow]")
+            for file in unstaged_files:
+                rprint(f"  [yellow]•[/yellow] {file}")
+            
+            if typer.confirm("\nDo you want to stage these changes?", default=True):
+                # 设置 GIT_WORK_TREE 和 GIT_DIR 环境变量
+                env = {
+                    'GIT_WORK_TREE': work_dir,
+                    'GIT_DIR': os.path.join(repo.working_dir, '.git')
+                }
+                repo.git.add(".", env=env)
+                rprint("[green]✓[/green] Changes staged successfully!")
+            else:
+                rprint("\n[yellow]Note:[/yellow] Proceeding with only previously staged changes.")
 
         # 检查是否有暂存的更改
-        try:
-            staged_files, diff_content = get_staged_changes(repo)
-        except Exception as e:
-            rprint(f"[yellow]Error:[/yellow] {str(e)}")
-            raise typer.Exit(1)
+        staged_files, diff_content = get_staged_changes(repo, work_dir)
+        if staged_files:
+            rprint("\n[green]Staged changes:[/green]")
+            for file in staged_files:
+                rprint(f"  [green]•[/green] {file}")
+        else:
+            raise Exception("No staged changes found. Use 'git add' to stage your changes.")
             
         settings = Settings.load()
         branch_name = get_current_branch(repo)
