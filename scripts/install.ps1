@@ -1,38 +1,34 @@
-# 需要管理员权限运行
+# 检查管理员权限
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Warning "Please run this script as Administrator"
-    Break
+    Write-Error "请以管理员身份运行此脚本"
+    exit 1
 }
 
-# 设置安装目录
+# 设置变量
 $InstallDir = "$env:ProgramFiles\aicommit"
-$BinaryPath = "$InstallDir\aicommit.exe"
+$BinaryName = "aicommit.exe"
+$ConfigDir = "$env:USERPROFILE\.config\aicommit"
+$PathEnv = [Environment]::GetEnvironmentVariable("Path", "Machine")
+
+# 检查二进制文件是否存在
+if (-NOT (Test-Path $BinaryName)) {
+    Write-Error "错误：找不到 $BinaryName 二进制文件"
+    Write-Host "请先运行 'go build -o aicommit.exe cmd/aicommit/main.go'"
+    exit 1
+}
 
 # 创建安装目录
-if (-not (Test-Path $InstallDir)) {
-    New-Item -ItemType Directory -Path $InstallDir | Out-Null
+New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+New-Item -ItemType Directory -Force -Path $ConfigDir | Out-Null
+
+# 复制二进制文件
+Copy-Item $BinaryName -Destination $InstallDir
+
+# 添加到系统PATH
+if ($PathEnv -notlike "*$InstallDir*") {
+    [Environment]::SetEnvironmentVariable("Path", "$PathEnv;$InstallDir", "Machine")
 }
 
-# 获取最新版本
-Write-Host "Fetching latest release..."
-$LatestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/SimonGino/aicommit/releases/latest"
-$DownloadUrl = $LatestRelease.assets | Where-Object { $_.name -eq "aicommit-windows.exe" } | Select-Object -ExpandProperty browser_download_url
-
-if (-not $DownloadUrl) {
-    Write-Error "Could not find latest release"
-    Exit 1
-}
-
-# 下载二进制文件
-Write-Host "Downloading aicommit..."
-Invoke-WebRequest -Uri $DownloadUrl -OutFile $BinaryPath
-
-# 添加到系统路径
-$PathEntry = $InstallDir
-$CurrentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-if ($CurrentPath -notlike "*$PathEntry*") {
-    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$PathEntry", "Machine")
-}
-
-Write-Host "Installation completed! You can now use 'aicommit' command."
-Write-Host "Try 'aicommit --help' to get started." 
+Write-Host "✓ 安装完成！"
+Write-Host "现在你可以使用 'aicommit' 命令了"
+Write-Host "注意：你可能需要重新打开PowerShell才能使用该命令" 

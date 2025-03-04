@@ -58,3 +58,6 @@ log/
 .config/aicommit/
 config.json
 config.toml 
+
+# Go
+src/aicommit

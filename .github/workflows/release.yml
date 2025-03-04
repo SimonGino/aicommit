@@ -6,87 +6,30 @@ on:
       - 'v*'
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.10']
-
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Install PDM
-      run: |
-        python -m pip install --upgrade pip
-        pip install pdm
-    
-    - name: Install dependencies
-      run: pdm install
-    
-    - name: Build binary
-      if: matrix.os != 'windows-latest'
-      run: pdm run build-binary
-
-    - name: Build binary (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: cmd
-      run: |
-        set PYTHONPATH=src
-        pdm run pyinstaller --name aicommit --onefile --paths src src/aicommit/cli/main.py
-
-    - name: Rename binary for Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        cd dist
-        mv aicommit.exe aicommit-windows.exe
-      shell: bash
-
-    - name: Rename binary for macOS
-      if: matrix.os == 'macos-latest'
-      run: |
-        cd dist
-        mv aicommit aicommit-macos
-      shell: bash
-
-    - name: Rename binary for Linux
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cd dist
-        mv aicommit aicommit-linux
-      shell: bash
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: binaries-${{ matrix.os }}
-        path: dist/aicommit*
-        retention-days: 1
-
-  release:
-    needs: build
+  goreleaser:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          files: |
-            binaries-windows-latest/aicommit-windows.exe
-            binaries-macos-latest/aicommit-macos
-            binaries-ubuntu-latest/aicommit-linux
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: aicommit-release
+          path: dist/*

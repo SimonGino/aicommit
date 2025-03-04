@@ -1,180 +1,148 @@
 # AI Commit
 
-An AI-powered git commit message generator that helps you write better commit messages. Currently supports Qwen API, with planned support for OpenAI, Claude, and DeepSeek.
+一个基于AI的Git提交消息生成工具，支持多个AI提供商（Qwen、OpenAI、DeepSeek），自动生成符合Conventional Commits规范的提交消息。
 
-## Features
+## 功能特点
 
-- Generate meaningful commit messages based on your staged changes
-- Support for multiple AI providers (currently Qwen, with more coming soon)
-- Easy configuration and API key management
-- Beautiful CLI interface with rich formatting
-- Cross-platform support (Windows, macOS, Linux)
+- 自动生成标准化的Git提交消息
+- 支持多个AI提供商：
+  - Qwen (通义千问)
+  - OpenAI (GPT-4)
+  - DeepSeek
+- 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
+- 支持多语言（英文、简体中文、繁体中文）
+- 美观的命令行界面
+- 交互式提交确认
 
-## Installation
+## 提交消息格式
 
-### Option 1: Using Installation Scripts (Recommended)
+生成的提交消息严格遵循以下格式：
 
-#### On macOS/Linux:
-```bash
-# Download the installation script
-curl -O https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.sh
+```
+<类型>(<范围>): <主题>
 
-# Make it executable
-chmod +x install.sh
+<正文>
 
-# Run the installer (requires sudo)
-sudo ./install.sh
+<脚注>
 ```
 
-#### On Windows:
-1. Open PowerShell as Administrator
-2. Run the following commands:
-```powershell
-# Download and run the installation script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.ps1" -OutFile "install.ps1"
-.\install.ps1
-```
+支持的提交类型：
+- feat: 新功能
+- fix: 修复缺陷
+- refactor: 代码重构
+- docs: 文档更新
+- style: 代码格式
+- test: 测试相关
+- chore: 其他更新
 
-### Option 2: Manual Installation
-1. Download the latest binary for your platform from the [releases page](https://github.com/SimonGino/aicommit/releases)
-2. Add the binary to your system PATH:
-   - Windows: Copy to `C:\Program Files\aicommit\`
-   - macOS/Linux: Copy to `/usr/local/bin/`
+## 安装
 
-### Option 3: Using pip (Python package)
-```bash
-pip install aicommit
-```
-
-## Configuration
-
-Before using the tool, you need to configure your AI provider API key. Currently, Qwen API is supported:
+### 使用go install（推荐）
 
 ```bash
+go install github.com/SimonGino/aicommit/cmd/aicommit@latest
+```
+
+### 手动安装
+
+1. 克隆仓库：
+```bash
+git clone https://github.com/SimonGino/aicommit.git
+cd aicommit
+```
+
+2. 构建：
+```bash
+go build -o aicommit cmd/aicommit/main.go
+```
+
+3. 安装到系统：
+```bash
+# Linux/macOS
+sudo ./scripts/install.sh
+
+# Windows (以管理员身份运行 PowerShell)
+.\scripts\install.ps1
+```
+
+## 配置
+
+首次使用前需要配置AI提供商的API密钥：
+
+```bash
+# 配置Qwen API
 aicommit config --provider qwen --api-key your-api-key-here
+
+# 配置OpenAI API
+aicommit config --provider openai --api-key your-api-key-here
+
+# 配置DeepSeek API
+aicommit config --provider deepseek --api-key your-api-key-here
 ```
 
-## Usage
-
-1. Stage your changes using git:
+设置输出语言（可选）：
 ```bash
-git add .  # or specific files
+aicommit config --language zh-CN  # 简体中文（默认）
+aicommit config --language en     # 英文
+aicommit config --language zh-TW  # 繁体中文
 ```
 
-2. Generate and commit with AI-generated message:
+## 使用方法
+
+1. 暂存要提交的更改：
 ```bash
-aicommit
+git add .  # 或指定文件
 ```
 
-You can also specify a different provider:
+2. 生成提交消息：
 ```bash
-aicommit --provider qwen  # Use Qwen API
-aicommit --provider deepseek  # Use DeepSeek API
+aicommit  # 使用默认AI提供商
 ```
 
-Or use it with a manual message (skips AI):
+指定AI提供商：
 ```bash
-aicommit -m "your message"
+aicommit --provider qwen     # 使用Qwen
+aicommit --provider openai   # 使用OpenAI
+aicommit --provider deepseek # 使用DeepSeek
 ```
 
-## Configuration
-
-### API Keys
-1. For Qwen API:
+使用自定义提交消息：
 ```bash
-aicommit config --provider qwen --api-key your-api-key
+aicommit -m "feat(auth): 添加用户认证功能"
 ```
 
-2. For DeepSeek API:
-```bash
-aicommit config --provider deepseek --api-key your-api-key
-```
-
-### Language Settings
-You can set the output language for commit messages:
-```bash
-aicommit config --language en      # English
-aicommit config --language zh-CN   # Simplified Chinese
-aicommit config --language zh-TW   # Traditional Chinese
-```
-
-# Language Settings
-
-You can configure the output language for commit messages. Currently supported languages:
-- English (en)
-- Simplified Chinese (zh-CN)
-- Traditional Chinese (zh-TW)
+## 卸载
 
 ```bash
-aicommit config --language en     # Set to English
-aicommit config --language zh-CN  # Set to Simplified Chinese
-aicommit config --language zh-TW  # Set to Traditional Chinese
+# Linux/macOS
+sudo ./scripts/uninstall.sh
+
+# Windows (以管理员身份运行 PowerShell)
+.\scripts\uninstall.ps1
 ```
 
-```
-## Uninstallation
+## 开发
 
-### On macOS/Linux:
+1. 克隆仓库：
 ```bash
-# Download the uninstallation script
-curl -O https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/uninstall.sh
-
-# Make it executable
-chmod +x uninstall.sh
-
-# Run the uninstaller (requires sudo)
-sudo ./uninstall.sh
+git clone https://github.com/SimonGino/aicommit.git
+cd aicommit
 ```
 
-### On Windows:
-1. Open PowerShell as Administrator
-2. Run the following commands:
-```powershell
-# Download and run the uninstallation script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/uninstall.ps1" -OutFile "uninstall.ps1"
-.\uninstall.ps1
-```
-
-## Development
-
-1. Clone the repository
-2. Install PDM if you haven't already:
+2. 安装依赖：
 ```bash
-pip install pdm
+go mod download
 ```
 
-3. Install dependencies:
+3. 运行测试：
 ```bash
-pdm install
+go test ./...
 ```
 
-4. Run the CLI:
-```bash
-pdm run aicommit
-```
+## 贡献
 
-## Building
+欢迎提交Pull Request或Issue！
 
-### Building Python Package
-To build the package for Python distribution:
+## 许可证
 
-```bash
-pdm build
-```
-
-### Building Binary Executable
-To build a standalone binary executable:
-
-```bash
-pdm run build-binary
-```
-
-This will create a single executable file in the `dist` directory that can be run without Python installation.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-MIT
+MIT 
