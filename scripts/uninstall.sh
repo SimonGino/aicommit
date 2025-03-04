@@ -20,7 +20,7 @@ else
 fi
 
 # 询问是否删除配置文件
-read -p "是否删除配置文件？(y/N) " -n 1 -r
+read -p "是否删除配置文件？这将删除所有API密钥和设置。(y/N) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     if [ -d "$CONFIG_DIR" ]; then

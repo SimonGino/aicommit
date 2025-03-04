@@ -25,7 +25,7 @@ if ($PathEnv -like "*$InstallDir*") {
 }
 
 # 询问是否删除配置文件
-$Response = Read-Host "是否删除配置文件？(y/N)"
+$Response = Read-Host "是否删除配置文件？这将删除所有API密钥和设置。(y/N)"
 if ($Response -eq 'y' -or $Response -eq 'Y') {
     if (Test-Path $ConfigDir) {
         Remove-Item -Path $ConfigDir -Recurse -Force
@@ -35,4 +35,5 @@ if ($Response -eq 'y' -or $Response -eq 'Y') {
     }
 }
 
-Write-Host "✓ 卸载完成！" 
+Write-Host "✓ 卸载完成！"
+Write-Host "注意：你可能需要重新打开PowerShell才能使环境变量更改生效" 
