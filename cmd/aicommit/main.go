@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -12,10 +13,18 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+// 版本信息，由 GoReleaser 在构建时注入
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
 	app := &cli.App{
-		Name:  "aicommit",
-		Usage: "AI驱动的git commit消息生成器",
+		Name:    "aicommit",
+		Usage:   "AI驱动的git commit消息生成器",
+		Version: fmt.Sprintf("%s (%s - %s)", version, commit[:7], date),
 		Commands: []*cli.Command{
 			{
 				Name:    "config",
@@ -66,7 +75,9 @@ func configAction(c *cli.Context) error {
 
 	if provider := c.String("provider"); provider != "" {
 		if apiKey := c.String("api-key"); apiKey != "" {
-			cfg.UpdateAPIKey(provider, apiKey)
+			if err := cfg.UpdateAPIKey(provider, apiKey); err != nil {
+				return fmt.Errorf("配置API密钥失败: %w", err)
+			}
 			fmt.Printf("✓ 成功配置 %s API密钥\n", provider)
 		}
 	}
@@ -103,7 +114,9 @@ func defaultAction(c *cli.Context) error {
 		if c.String("message") == "" {
 			fmt.Print("\n是否要暂存这些更改？[y/N] ")
 			var answer string
-			fmt.Scanln(&answer)
+			if _, err := fmt.Scanln(&answer); err != nil && err != io.EOF {
+				return fmt.Errorf("读取用户输入失败: %w", err)
+			}
 			if answer == "y" || answer == "Y" {
 				if err := repo.StageAll(); err != nil {
 					return err
@@ -185,7 +198,9 @@ func defaultAction(c *cli.Context) error {
 	// 确认提交
 	fmt.Print("\n是否要使用这个消息提交？[Y/n] ")
 	var answer string
-	fmt.Scanln(&answer)
+	if _, err := fmt.Scanln(&answer); err != nil && err != io.EOF {
+		return fmt.Errorf("读取用户输入失败: %w", err)
+	}
 	if answer == "" || answer == "y" || answer == "Y" {
 		commitMessage := message.Title
 		if message.Body != "" {

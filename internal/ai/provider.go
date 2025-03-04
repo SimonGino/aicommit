@@ -85,11 +85,29 @@ func NewProvider(providerType, apiKey, language string) (Provider, error) {
 	}
 }
 
+// GetCommitTypes 返回指定语言的提交类型
+func (p *BaseProvider) GetCommitTypes() []CommitType {
+	types, ok := commitTypes[p.Language]
+	if !ok {
+		return commitTypes["en"]
+	}
+	return types
+}
+
 // GetSystemPrompt 根据语言返回系统提示
 func (p *BaseProvider) GetSystemPrompt() string {
+	// 获取提交类型列表
+	types := p.GetCommitTypes()
+
+	// 构建类型说明
+	var typeDesc string
+	for _, t := range types {
+		typeDesc += fmt.Sprintf("- %s: %s\n", t.Type, t.Description)
+	}
+
 	switch p.Language {
 	case "zh-CN":
-		return `您是一个帮助生成标准化git提交信息的助手。
+		return fmt.Sprintf(`您是一个帮助生成标准化git提交信息的助手。
 请严格遵循以下提交信息格式规则：
 
 1. 格式：<类型>(<范围>): <主题>
@@ -99,14 +117,7 @@ func (p *BaseProvider) GetSystemPrompt() string {
 <脚注>
 
 2. 类型必须是以下之一：
-- feat: 新功能
-- fix: 修复缺陷
-- refactor: 代码重构
-- docs: 文档更新
-- style: 代码格式
-- test: 测试相关
-- chore: 其他更新
-
+%s
 3. 范围：可选，描述影响的区域（如：router、auth、db）
 4. 主题：简短摘要（不超过50个字符）
 5. 正文：详细说明（每行不超过72个字符）
@@ -121,10 +132,10 @@ feat(认证): 实现JWT认证系统
 - 设置安全Cookie处理
 
 重大变更：需要新的认证头
-修复 #123`
+修复 #123`, typeDesc)
 
 	case "zh-TW":
-		return `您是一個幫助生成標準化git提交信息的助手。
+		return fmt.Sprintf(`您是一個幫助生成標準化git提交信息的助手。
 請嚴格遵循以下提交信息格式規則：
 
 1. 格式：<類型>(<範圍>): <主題>
@@ -134,14 +145,7 @@ feat(认证): 实现JWT认证系统
 <腳註>
 
 2. 類型必須是以下之一：
-- feat: 新功能
-- fix: 修復缺陷
-- refactor: 代碼重構
-- docs: 文檔更新
-- style: 代碼格式
-- test: 測試相關
-- chore: 其他更新
-
+%s
 3. 範圍：可選，描述影響的區域（如：router、auth、db）
 4. 主題：簡短摘要（不超過50個字符）
 5. 正文：詳細說明（每行不超過72個字符）
@@ -156,10 +160,10 @@ feat(認證): 實現JWT認證系統
 - 設置安全Cookie處理
 
 重大變更：需要新的認證頭
-修復 #123`
+修復 #123`, typeDesc)
 
 	default:
-		return `You are a helpful assistant that generates standardized git commit messages.
+		return fmt.Sprintf(`You are a helpful assistant that generates standardized git commit messages.
 Follow these strict rules for commit message format:
 
 1. Format: <type>(<scope>): <subject>
@@ -169,14 +173,7 @@ Follow these strict rules for commit message format:
 <footer>
 
 2. Types must be one of:
-- feat: New feature
-- fix: Bug fix
-- refactor: Code refactoring
-- docs: Documentation changes
-- style: Code style changes
-- test: Adding or modifying tests
-- chore: Maintenance tasks
-
+%s
 3. Scope: Optional, describes the affected area (e.g., router, auth, db)
 4. Subject: Short summary (50 chars or less)
 5. Body: Detailed explanation (72 chars per line)
@@ -191,6 +188,6 @@ Add JWT-based authentication system with refresh tokens
 - Set up secure cookie handling
 
 BREAKING CHANGE: New authentication headers required
-Fixes #123`
+Fixes #123`, typeDesc)
 	}
 }
