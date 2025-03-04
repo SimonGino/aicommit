@@ -34,7 +34,7 @@ jobs:
         go build -v -o aicommit cmd/aicommit/main.go
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: aicommit-${{ matrix.os }}
         path: |
