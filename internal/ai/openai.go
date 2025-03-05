@@ -41,65 +41,11 @@ type openaiResponse struct {
 }
 
 func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, info *CommitInfo) (*CommitMessage, error) {
-	// 构建文件列表
-	var filesList strings.Builder
-	for _, file := range info.FilesChanged {
-		filesList.WriteString("- ")
-		filesList.WriteString(file)
-		filesList.WriteString("\n")
-	}
-
-	var prompt string
-	switch p.Language {
-	case "zh-CN":
-		prompt = fmt.Sprintf(`请为以下Git更改生成标准化的提交信息：
-
-分支：%s
-
-更改的文件：
-%s
-更改内容：
-%s
-
-请严格按照系统提示中的格式要求生成提交信息。`,
-			info.BranchName,
-			filesList.String(),
-			info.DiffContent)
-	case "zh-TW":
-		prompt = fmt.Sprintf(`請為以下Git更改生成標準化的提交信息：
-
-分支：%s
-
-更改的文件：
-%s
-更改內容：
-%s
-
-請嚴格按照系統提示中的格式要求生成提交信息。`,
-			info.BranchName,
-			filesList.String(),
-			info.DiffContent)
-	default:
-		prompt = fmt.Sprintf(`Please generate a standardized commit message for the following Git changes:
-
-Branch: %s
-
-Files changed:
-%s
-Changes:
-%s
-
-Please strictly follow the format requirements in the system prompt.`,
-			info.BranchName,
-			filesList.String(),
-			info.DiffContent)
-	}
-
 	reqBody := openaiRequest{
 		Model: "gpt-4",
 		Messages: []openaiMessage{
 			{Role: "system", Content: p.GetSystemPrompt()},
-			{Role: "user", Content: prompt},
+			{Role: "user", Content: p.GetUserPrompt(info, p.BuildFilesList(info.FilesChanged))},
 		},
 		Temperature: 0.7,
 		MaxTokens:   1500,

@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 // CommitInfo 包含生成提交消息所需的信息
@@ -64,6 +65,65 @@ type Provider interface {
 type BaseProvider struct {
 	APIKey   string
 	Language string
+}
+
+// BuildFilesList 构建文件列表字符串
+func (p *BaseProvider) BuildFilesList(files []string) string {
+	var filesList strings.Builder
+	for _, file := range files {
+		filesList.WriteString("- ")
+		filesList.WriteString(file)
+		filesList.WriteString("\n")
+	}
+	return filesList.String()
+}
+
+// GetUserPrompt 根据语言返回用户提示
+func (p *BaseProvider) GetUserPrompt(info *CommitInfo, filesList string) string {
+	switch p.Language {
+	case "zh-CN":
+		return fmt.Sprintf(`请为以下Git更改生成标准化的提交信息：
+
+分支：%s
+
+更改的文件：
+%s
+更改内容：
+%s
+
+请严格按照系统提示中的格式要求生成提交信息。`,
+			info.BranchName,
+			filesList,
+			info.DiffContent)
+	case "zh-TW":
+		return fmt.Sprintf(`請為以下Git更改生成標準化的提交信息：
+
+分支：%s
+
+更改的文件：
+%s
+更改內容：
+%s
+
+請嚴格按照系統提示中的格式要求生成提交信息。`,
+			info.BranchName,
+			filesList,
+			info.DiffContent)
+	default:
+		return fmt.Sprintf(`Please generate a standardized commit message for the following Git changes:
+
+Branch: %s
+
+Files changed:
+%s
+Changes:
+%s
+
+Please strictly follow the format requirements in the system prompt.`,
+			info.BranchName,
+			filesList,
+			info.DiffContent)
+	}
 }
 
 // NewProvider 创建指定类型的AI提供商实例
