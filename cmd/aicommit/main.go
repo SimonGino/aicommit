@@ -1,11 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/SimonGino/aicommit/internal/ai"
 	"github.com/SimonGino/aicommit/internal/config"
@@ -24,7 +25,7 @@ func main() {
 	app := &cli.App{
 		Name:    "aicommit",
 		Usage:   "AI驱动的git commit消息生成器",
-		Version: fmt.Sprintf("%s (%s - %s)", version, commit[:7], date),
+		Version: getVersion(),
 		Commands: []*cli.Command{
 			{
 				Name:    "config",
@@ -112,12 +113,14 @@ func defaultAction(c *cli.Context) error {
 		}
 
 		if c.String("message") == "" {
+			reader := bufio.NewReader(os.Stdin)
 			fmt.Print("\n是否要暂存这些更改？[y/N] ")
-			var answer string
-			if _, err := fmt.Scanln(&answer); err != nil && err != io.EOF {
+			answer, err := reader.ReadString('\n')
+			if err != nil {
 				return fmt.Errorf("读取用户输入失败: %w", err)
 			}
-			if answer == "y" || answer == "Y" {
+			answer = strings.TrimSpace(strings.ToLower(answer))
+			if answer == "y" {
 				if err := repo.StageAll(); err != nil {
 					return err
 				}
@@ -196,12 +199,14 @@ func defaultAction(c *cli.Context) error {
 	}
 
 	// 确认提交
+	reader := bufio.NewReader(os.Stdin)
 	fmt.Print("\n是否要使用这个消息提交？[Y/n] ")
-	var answer string
-	if _, err := fmt.Scanln(&answer); err != nil && err != io.EOF {
+	answer, err := reader.ReadString('\n')
+	if err != nil {
 		return fmt.Errorf("读取用户输入失败: %w", err)
 	}
-	if answer == "" || answer == "y" || answer == "Y" {
+	answer = strings.TrimSpace(strings.ToLower(answer))
+	if answer == "" || answer == "y" {
 		commitMessage := message.Title
 		if message.Body != "" {
 			commitMessage += "\n\n" + message.Body
@@ -215,4 +220,13 @@ func defaultAction(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+// 添加版本信息处理函数
+func getVersion() string {
+	commitHash := commit
+	if len(commit) >= 7 {
+		commitHash = commit[:7]
+	}
+	return fmt.Sprintf("%s (%s - %s)", version, commitHash, date)
 }
