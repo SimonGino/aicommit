@@ -95,8 +95,12 @@ func (p *QwenProvider) GenerateCommitMessage(ctx context.Context, info *CommitIn
 		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}
 
+	// 清理响应内容中的Markdown格式标记
+	content := result.Output.Text
+	content = p.CleanMarkdownFormatting(content)
+
 	// 分割标题和正文
-	parts := strings.SplitN(result.Output.Text, "\n\n", 2)
+	parts := strings.SplitN(content, "\n\n", 2)
 	message := &CommitMessage{
 		Title: strings.TrimSpace(parts[0]),
 	}

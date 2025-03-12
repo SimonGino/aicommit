@@ -83,8 +83,12 @@ func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, info *Commit
 		return nil, fmt.Errorf("API返回结果为空")
 	}
 
+	// 清理响应内容中的Markdown格式标记
+	content := result.Choices[0].Message.Content
+	content = p.CleanMarkdownFormatting(content)
+
 	// 分割标题和正文
-	parts := strings.SplitN(result.Choices[0].Message.Content, "\n\n", 2)
+	parts := strings.SplitN(content, "\n\n", 2)
 	message := &CommitMessage{
 		Title: strings.TrimSpace(parts[0]),
 	}
