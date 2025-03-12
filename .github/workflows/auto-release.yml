@@ -27,10 +27,11 @@ jobs:
       - name: Determine version bump
         id: bump
         run: |
+          # 使用bash的字符串处理，避免管道和命令替换的问题
           COMMIT_MSG="${{ steps.get_commit.outputs.message }}"
-          if [[ $COMMIT_MSG == feat* ]]; then
+          if [[ "$COMMIT_MSG" == feat* ]]; then
             echo "type=minor" >> $GITHUB_OUTPUT
-          elif [[ $COMMIT_MSG == fix* ]]; then
+          elif [[ "$COMMIT_MSG" == fix* ]]; then
             echo "type=patch" >> $GITHUB_OUTPUT
           else
             echo "type=patch" >> $GITHUB_OUTPUT
