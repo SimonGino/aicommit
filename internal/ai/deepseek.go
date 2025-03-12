@@ -85,7 +85,7 @@ func (p *DeepseekProvider) GenerateCommitMessage(ctx context.Context, info *Comm
 
 	// 清理响应内容中的Markdown格式标记
 	content := result.Choices[0].Message.Content
-	content = cleanMarkdownFormatting(content)
+	content = p.CleanMarkdownFormatting(content)
 
 	// 分割标题和正文
 	parts := strings.SplitN(content, "\n\n", 2)
@@ -97,17 +97,4 @@ func (p *DeepseekProvider) GenerateCommitMessage(ctx context.Context, info *Comm
 	}
 
 	return message, nil
-}
-
-// cleanMarkdownFormatting 清理Markdown格式标记
-func cleanMarkdownFormatting(content string) string {
-	// 移除 ```plaintext 和 ``` 标记
-	content = strings.TrimPrefix(content, "```plaintext")
-	content = strings.TrimPrefix(content, "```")
-	content = strings.TrimSuffix(content, "```")
-
-	// 移除开头的空行
-	content = strings.TrimLeft(content, "\n")
-
-	return content
 }

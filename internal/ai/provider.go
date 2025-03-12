@@ -78,6 +78,19 @@ func (p *BaseProvider) BuildFilesList(files []string) string {
 	return filesList.String()
 }
 
+// CleanMarkdownFormatting 清理Markdown格式标记
+func (p *BaseProvider) CleanMarkdownFormatting(content string) string {
+	// 移除 ```plaintext 和 ``` 标记
+	content = strings.TrimPrefix(content, "```plaintext")
+	content = strings.TrimPrefix(content, "```")
+	content = strings.TrimSuffix(content, "```")
+
+	// 移除开头的空行
+	content = strings.TrimLeft(content, "\n")
+
+	return content
+}
+
 // GetUserPrompt 根据语言返回用户提示
 func (p *BaseProvider) GetUserPrompt(info *CommitInfo, filesList string) string {
 	switch p.Language {
