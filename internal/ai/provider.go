@@ -88,7 +88,27 @@ func (p *BaseProvider) CleanMarkdownFormatting(content string) string {
 	// 移除开头的空行
 	content = strings.TrimLeft(content, "\n")
 
-	return content
+	// 移除随机添加的issue引用（如果不是用户明确要求的）
+	// 匹配中文的"修复 #数字"或英文的"Fixes #数字"等格式
+	lines := strings.Split(content, "\n")
+	filteredLines := make([]string, 0, len(lines))
+
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		// 跳过匹配"修复 #数字"、"Fixes #数字"等格式的行
+		if strings.HasPrefix(trimmedLine, "修复 #") ||
+			strings.HasPrefix(trimmedLine, "Fixes #") ||
+			strings.HasPrefix(trimmedLine, "fixes #") ||
+			strings.HasPrefix(trimmedLine, "Fix #") ||
+			strings.HasPrefix(trimmedLine, "fix #") ||
+			strings.HasPrefix(trimmedLine, "Closes #") ||
+			strings.HasPrefix(trimmedLine, "closes #") {
+			continue
+		}
+		filteredLines = append(filteredLines, line)
+	}
+
+	return strings.Join(filteredLines, "\n")
 }
 
 // GetUserPrompt 根据语言返回用户提示
