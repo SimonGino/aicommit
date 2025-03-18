@@ -62,6 +62,11 @@ func main() {
 				Aliases: []string{"m"},
 				Usage:   "使用指定的提交消息（跳过AI生成）",
 			},
+			&cli.StringFlag{
+				Name:    "language",
+				Aliases: []string{"l"},
+				Usage:   "指定输出语言 (en, zh-CN, zh-TW)",
+			},
 		},
 		Action: defaultAction,
 	}
@@ -179,8 +184,25 @@ func defaultAction(c *cli.Context) error {
 		provider = cfg.DefaultProvider
 	}
 
+	// 获取语言设置，优先使用命令行参数
+	language := c.String("language")
+	if language == "" {
+		language = cfg.Language
+	} else {
+		// 验证语言是否支持
+		switch language {
+		case "en", "zh-CN", "zh-TW", "zh":
+			// 为简化用户输入，如果输入zh则使用zh-CN
+			if language == "zh" {
+				language = "zh-CN"
+			}
+		default:
+			return fmt.Errorf("不支持的语言: %s，请使用 en, zh-CN, zh-TW", language)
+		}
+	}
+
 	// 创建AI提供商实例
-	aiProvider, err := ai.NewProvider(provider, cfg.GetAPIKey(provider), cfg.Language)
+	aiProvider, err := ai.NewProvider(provider, cfg.GetAPIKey(provider), language)
 	if err != nil {
 		return fmt.Errorf("创建AI提供商实例失败: %w", err)
 	}
