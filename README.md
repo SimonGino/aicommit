@@ -1,5 +1,7 @@
 # AI Commit
 
+[English](README_en.md) | 简体中文
+
 一个基于AI的Git提交消息生成工具，支持多个AI提供商（Qwen、OpenAI、DeepSeek），自动生成符合Conventional Commits规范的提交消息。
 
 ## 功能特点
@@ -110,6 +112,14 @@ aicommit --provider deepseek # 使用DeepSeek
 使用自定义提交消息：
 ```bash
 aicommit -m "feat(auth): 添加用户认证功能"
+```
+
+临时指定输出语言：
+```bash
+aicommit -l en     # 使用英文生成提交消息
+aicommit -l zh-CN  # 使用简体中文生成提交消息
+aicommit -l zh-TW  # 使用繁体中文生成提交消息
+aicommit -l zh     # 使用简体中文生成提交消息（简写）
 ```
 
 ## 卸载
