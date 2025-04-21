@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/SimonGino/aicommit/internal/ai"
 	"github.com/SimonGino/aicommit/internal/config"
@@ -49,6 +50,44 @@ func main() {
 					},
 				},
 				Action: configAction,
+			},
+			{
+				Name:    "report",
+				Aliases: []string{"r"},
+				Usage:   "根据Git提交历史生成日报",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "provider",
+						Aliases: []string{"p"},
+						Usage:   "指定AI提供商 (默认使用配置)",
+					},
+					&cli.StringFlag{
+						Name:    "language",
+						Aliases: []string{"l"},
+						Usage:   "指定日报语言 (默认使用配置)",
+					},
+					&cli.BoolFlag{
+						Name:  "this-week",
+						Usage: "生成本周的日报",
+					},
+					&cli.BoolFlag{
+						Name:  "last-week",
+						Usage: "生成上周的日报",
+					},
+					&cli.StringFlag{
+						Name:  "since",
+						Usage: "指定开始日期 (YYYY-MM-DD)",
+					},
+					&cli.StringFlag{
+						Name:  "until",
+						Usage: "指定结束日期 (YYYY-MM-DD)",
+					},
+					&cli.StringFlag{
+						Name:  "author",
+						Usage: "指定作者邮箱 (默认使用当前Git配置)",
+					},
+				},
+				Action: reportAction,
 			},
 		},
 		Flags: []cli.Flag{
@@ -97,6 +136,165 @@ func configAction(c *cli.Context) error {
 
 	fmt.Printf("配置文件: %s\n", cfg.ConfigFile())
 	return nil
+}
+
+func reportAction(c *cli.Context) error {
+	repo, err := git.GetRepo("")
+	if err != nil {
+		return fmt.Errorf("获取Git仓库失败: %w", err)
+	}
+
+	// 获取作者邮箱
+	authorEmail := c.String("author")
+	if authorEmail == "" {
+		_, email, err := repo.GetUserInfo()
+		if err != nil {
+			return fmt.Errorf("获取Git用户信息失败: %w", err)
+		}
+		authorEmail = email
+		if authorEmail == "" {
+			return fmt.Errorf("无法确定作者邮箱，请使用 --author 参数指定或配置Git user.email")
+		}
+	}
+
+	// 解析日期范围
+	since, until, err := parseDateRange(c)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("正在为 %s 获取 %s 到 %s 的提交记录...\n", authorEmail, since, until)
+	commits, err := repo.GetCommits(authorEmail, since, until)
+	if err != nil {
+		return fmt.Errorf("获取提交记录失败: %w", err)
+	}
+
+	if len(commits) == 0 {
+		fmt.Println("在指定时间范围内没有找到该作者的提交记录。")
+		return nil
+	}
+
+	fmt.Printf("找到 %d 条提交记录，正在生成日报...\n", len(commits))
+
+	// 加载配置
+	cfg := config.LoadConfig()
+	providerName := c.String("provider")
+	if providerName == "" {
+		providerName = cfg.DefaultProvider
+	}
+
+	language := c.String("language")
+	if language == "" {
+		language = cfg.Language
+	} else {
+		if err := validateLanguage(language); err != nil {
+			return err
+		}
+		// 修正 zh -> zh-CN
+		if language == "zh" {
+			language = "zh-CN"
+		}
+	}
+
+	apiKey := cfg.GetAPIKey(providerName)
+	if apiKey == "" {
+		return fmt.Errorf("未找到 %s 的API密钥，请先使用 config 命令配置", providerName)
+	}
+
+	aiProvider, err := ai.NewProvider(providerName, apiKey, language)
+	if err != nil {
+		return fmt.Errorf("创建AI提供商实例失败: %w", err)
+	}
+
+	reportInfo := &ai.ReportInfo{
+		Commits: commits,
+	}
+
+	reportContent, err := aiProvider.GenerateDailyReport(context.Background(), reportInfo, since, until)
+	if err != nil {
+		return fmt.Errorf("生成日报失败: %w", err)
+	}
+
+	fmt.Println("\n--- 生成的日报 ---")
+	fmt.Println(reportContent)
+	fmt.Println("--- 日报结束 ---")
+
+	return nil
+}
+
+// parseDateRange 解析日期范围标志
+func parseDateRange(c *cli.Context) (since, until string, err error) {
+	dateFormat := "2006-01-02"
+	now := time.Now()
+
+	if c.Bool("this-week") {
+		weekday := now.Weekday()
+		if weekday == time.Sunday {
+			weekday = 7 // Adjust Sunday to be the 7th day
+		}
+		startOfWeek := now.AddDate(0, 0, -int(weekday)+1)
+		endOfWeek := startOfWeek.AddDate(0, 0, 6)
+		since = startOfWeek.Format(dateFormat)
+		until = endOfWeek.Format(dateFormat)
+	} else if c.Bool("last-week") {
+		weekday := now.Weekday()
+		if weekday == time.Sunday {
+			weekday = 7 // Adjust Sunday to be the 7th day
+		}
+		startOfLastWeek := now.AddDate(0, 0, -int(weekday)+1-7)
+		endOfLastWeek := startOfLastWeek.AddDate(0, 0, 6)
+		since = startOfLastWeek.Format(dateFormat)
+		until = endOfLastWeek.Format(dateFormat)
+	} else {
+		since = c.String("since")
+		until = c.String("until")
+
+		// 如果只提供了 since，until 默认为今天
+		if since != "" && until == "" {
+			until = now.Format(dateFormat)
+		}
+		// 如果只提供了 until，since 默认为空（git log 会处理）
+		// 如果都没有提供，则 since 和 until 都为空，git log 会获取所有历史
+		// 我们需要一个默认行为，比如默认获取本周？或者报错？这里先按不提供则获取全部处理
+		// 增加校验：如果提供了 since 或 until，必须是 YYYY-MM-DD 格式
+		if since != "" {
+			if _, pErr := time.Parse(dateFormat, since); pErr != nil {
+				err = fmt.Errorf("无效的开始日期格式: %s，请使用 YYYY-MM-DD", since)
+				return
+			}
+		}
+		if until != "" {
+			if _, pErr := time.Parse(dateFormat, until); pErr != nil {
+				err = fmt.Errorf("无效的结束日期格式: %s，请使用 YYYY-MM-DD", until)
+				return
+			}
+		}
+
+		// 默认行为：如果 since 和 until 都为空，默认获取本周
+		if since == "" && until == "" {
+			weekday := now.Weekday()
+			if weekday == time.Sunday {
+				weekday = 7 // Adjust Sunday to be the 7th day
+			}
+			startOfWeek := now.AddDate(0, 0, -int(weekday)+1)
+			endOfWeek := startOfWeek.AddDate(0, 0, 6)
+			since = startOfWeek.Format(dateFormat)
+			until = endOfWeek.Format(dateFormat)
+			fmt.Printf("未指定日期范围，默认使用本周 (%s - %s)\n", since, until)
+		}
+	}
+
+	return
+}
+
+// validateLanguage 验证语言是否支持
+func validateLanguage(lang string) error {
+	switch lang {
+	case "en", "zh-CN", "zh-TW", "zh":
+		return nil
+	default:
+		return fmt.Errorf("不支持的语言: %s，请使用 en, zh-CN, zh-TW", lang)
+	}
 }
 
 func defaultAction(c *cli.Context) error {
@@ -189,20 +387,21 @@ func defaultAction(c *cli.Context) error {
 	if language == "" {
 		language = cfg.Language
 	} else {
-		// 验证语言是否支持
-		switch language {
-		case "en", "zh-CN", "zh-TW", "zh":
-			// 为简化用户输入，如果输入zh则使用zh-CN
-			if language == "zh" {
-				language = "zh-CN"
-			}
-		default:
-			return fmt.Errorf("不支持的语言: %s，请使用 en, zh-CN, zh-TW", language)
+		if err := validateLanguage(language); err != nil {
+			return err
+		}
+		// 修正 zh -> zh-CN
+		if language == "zh" {
+			language = "zh-CN"
 		}
 	}
 
 	// 创建AI提供商实例
-	aiProvider, err := ai.NewProvider(provider, cfg.GetAPIKey(provider), language)
+	apiKey := cfg.GetAPIKey(provider)
+	if apiKey == "" {
+		return fmt.Errorf("未找到 %s 的API密钥，请先使用 'aicommit config -p %s -k YOUR_API_KEY' 配置", provider, provider)
+	}
+	aiProvider, err := ai.NewProvider(provider, apiKey, language)
 	if err != nil {
 		return fmt.Errorf("创建AI提供商实例失败: %w", err)
 	}

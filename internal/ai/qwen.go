@@ -1,23 +1,25 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
 
 const qwenAPIEndpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
 
+// QwenProvider 实现通义千问 API 的 Provider
 type QwenProvider struct {
 	*BaseProvider
 }
 
+// NewQwenProvider 创建 QwenProvider 实例
 func NewQwenProvider(base *BaseProvider) *QwenProvider {
-	return &QwenProvider{
-		BaseProvider: base,
-	}
+	return &QwenProvider{BaseProvider: base}
 }
 
 type qwenRequest struct {
@@ -109,4 +111,75 @@ func (p *QwenProvider) GenerateCommitMessage(ctx context.Context, info *CommitIn
 	}
 
 	return message, nil
+}
+
+// GenerateDailyReport 使用通义千问生成日报
+func (p *QwenProvider) GenerateDailyReport(ctx context.Context, info *ReportInfo, since, until string) (string, error) {
+	client := &http.Client{}
+	url := "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+
+	userPrompt := p.GetUserPromptForReport(info, since, until)
+	// 通义千问同样不需要特定系统提示生成日报，依赖用户提示
+
+	payload := map[string]interface{}{
+		"model": "qwen-turbo", // 或其他版本
+		"input": map[string]interface{}{
+			"messages": []map[string]string{
+				{"role": "user", "content": userPrompt},
+			},
+		},
+		"parameters": map[string]interface{}{
+			"result_format": "message",
+		},
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(payloadBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("请求通义千问 API 失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取通义千问响应失败: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("通义千问 API 返回错误状态 %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("解析通义千问响应 JSON 失败: %w", err)
+	}
+
+	output, ok := result["output"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("通义千问响应格式错误: 缺少 output 字段")
+	}
+	choices, ok := output["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return "", fmt.Errorf("通义千问响应格式错误: 缺少 choices 字段或为空")
+	}
+	firstChoice, ok := choices[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("通义千问响应格式错误: choices 元素格式错误")
+	}
+	message, ok := firstChoice["message"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("通义千问响应格式错误: 缺少 message 字段")
+	}
+	content, ok := message["content"].(string)
+	if !ok || content == "" {
+		return "", fmt.Errorf("通义千问未返回有效的日报内容")
+	}
+
+	reportContent := p.CleanMarkdownFormatting(content)
+
+	return reportContent, nil
 }

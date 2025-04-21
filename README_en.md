@@ -122,6 +122,13 @@ aicommit -l zh-TW  # Generate commit message in Traditional Chinese
 aicommit -l zh     # Generate commit message in Simplified Chinese (shorthand)
 ```
 
+3. Generate a commit message:
+```bash
+aicommit report --this-week  # Generate a commit message for the current week
+aicommit report --last-week  # Generate a commit message for the last week
+aicommit report --since 2023-10-01 --until 2023-10-31  # Generate a commit message for a specific date range
+```
+
 ## Uninstallation
 
 ```bash

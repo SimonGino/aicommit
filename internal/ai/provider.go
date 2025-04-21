@@ -19,6 +19,11 @@ type CommitMessage struct {
 	Body  string
 }
 
+// ReportInfo 包含生成日报所需的信息
+type ReportInfo struct {
+	Commits []string
+}
+
 // CommitType 定义提交类型
 type CommitType struct {
 	Type        string
@@ -59,6 +64,7 @@ var commitTypes = map[string][]CommitType{
 // Provider 定义了AI提供商的接口
 type Provider interface {
 	GenerateCommitMessage(ctx context.Context, info *CommitInfo) (*CommitMessage, error)
+	GenerateDailyReport(ctx context.Context, info *ReportInfo, since, until string) (string, error)
 }
 
 // BaseProvider 提供基本的AI提供商实现
@@ -156,6 +162,63 @@ Please strictly follow the format requirements in the system prompt.`,
 			info.BranchName,
 			filesList,
 			info.DiffContent)
+	}
+}
+
+// GetUserPromptForReport 根据语言返回生成日报的用户提示
+func (p *BaseProvider) GetUserPromptForReport(info *ReportInfo, since, until string) string {
+	// 将提交列表格式化为 "- YYYY-MM-DD -- Subject"
+	var commitsFormatted strings.Builder
+	for _, commit := range info.Commits {
+		commitsFormatted.WriteString("- ")
+		commitsFormatted.WriteString(commit)
+		commitsFormatted.WriteString("\n")
+	}
+	commitsList := strings.TrimSpace(commitsFormatted.String())
+
+	switch p.Language {
+	case "zh-CN":
+		return fmt.Sprintf(`请根据以下 Git commit 记录（格式为 "- YYYY-MM-DD -- Commit Subject"），为日期范围 %s 至 %s 总结生成一份简洁的工作日报。
+
+要求：
+1.  使用 Markdown 格式。
+2.  按日期**总结**当天完成的主要工作，**不要**罗列单个 commit message。
+3.  忽略所有 "Merge branch" 或 "Merge remote-tracking branch" 相关的提交。
+4.  报告标题或开头应明确指出报告的时间范围是 %s 到 %s。
+5.  语言为简体中文。
+
+Commit 记录:
+%s
+
+请生成日报内容：`, since, until, since, until, commitsList)
+	case "zh-TW":
+		return fmt.Sprintf(`請根據以下 Git commit 記錄（格式為 "- YYYY-MM-DD -- Commit Subject"），為日期範圍 %s 至 %s 總結生成一份簡潔的工作日報。
+
+要求：
+1.  使用 Markdown 格式。
+2.  按日期**總結**當天完成的主要工作，**不要**羅列單個 commit message。
+3.  忽略所有 "Merge branch" 或 "Merge remote-tracking branch" 相關的提交。
+4.  報告標題或開頭應明確指出報告的時間範圍是 %s 到 %s。
+5.  語言為繁體中文。
+
+Commit 記錄:
+%s
+
+請生成日報內容：`, since, until, since, until, commitsList)
+	default:
+		return fmt.Sprintf(`Please summarize the following Git commit records (formatted as "- YYYY-MM-DD -- Commit Subject") into a concise work report for the period %s to %s.
+
+Requirements:
+1.  Use Markdown format.
+2.  Summarize the main work completed **per day**. **Do not** list individual commit messages.
+3.  Ignore any commits related to "Merge branch" or "Merge remote-tracking branch".
+4.  The report title or beginning should clearly state the reporting period is from %s to %s.
+5.  The language should be English.
+
+Commit Records:
+%s
+
+Please generate the report content:`, since, until, since, until, commitsList)
 	}
 }
 

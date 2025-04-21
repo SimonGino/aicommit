@@ -122,6 +122,24 @@ aicommit -l zh-TW  # 使用繁体中文生成提交消息
 aicommit -l zh     # 使用简体中文生成提交消息（简写）
 ```
 
+3. 使用 `aicommit report` 生成日报
+
+   根据你的 Git 提交历史生成工作日报。
+
+   ```bash
+   # 生成本周日报 (默认作者为当前 Git 配置)
+   aicommit report --this-week
+
+   # 生成上周日报
+   aicommit report --last-week
+
+   # 生成指定日期范围的日报
+   aicommit report --since 2023-10-01 --until 2023-10-31
+
+   # 为指定作者生成本周日报
+   aicommit report --this-week --author "user@example.com"
+   ```
+
 ## 卸载
 
 ```bash

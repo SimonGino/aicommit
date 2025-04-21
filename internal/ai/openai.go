@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/sashabaranov/go-openai"
 )
 
 const openaiAPIEndpoint = "https://api.openai.com/v1/chat/completions"
 
+// OpenAIProvider 实现 OpenAI API 的 Provider
 type OpenAIProvider struct {
 	*BaseProvider
 }
 
+// NewOpenAIProvider 创建 OpenAIProvider 实例
 func NewOpenAIProvider(base *BaseProvider) *OpenAIProvider {
-	return &OpenAIProvider{
-		BaseProvider: base,
-	}
+	return &OpenAIProvider{BaseProvider: base}
 }
 
 type openaiRequest struct {
@@ -42,7 +44,7 @@ type openaiResponse struct {
 
 func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, info *CommitInfo) (*CommitMessage, error) {
 	reqBody := openaiRequest{
-		Model: "gpt-4",
+		Model: openai.GPT4oMini, // 或者选择其他合适的模型
 		Messages: []openaiMessage{
 			{Role: "system", Content: p.GetSystemPrompt()},
 			{Role: "user", Content: p.GetUserPrompt(info, p.BuildFilesList(info.FilesChanged))},
@@ -97,4 +99,35 @@ func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, info *Commit
 	}
 
 	return message, nil
+}
+
+// GenerateDailyReport 使用OpenAI生成日报
+func (p *OpenAIProvider) GenerateDailyReport(ctx context.Context, info *ReportInfo, since, until string) (string, error) {
+	client := openai.NewClient(p.APIKey)
+
+	userPrompt := p.GetUserPromptForReport(info, since, until)
+	// OpenAI 不需要特定的系统提示来生成日报，依赖用户提示中的指令
+
+	req := openai.ChatCompletionRequest{
+		Model: openai.GPT4oMini, // 或者选择其他合适的模型
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: userPrompt,
+			},
+		},
+	}
+
+	resp, err := client.CreateChatCompletion(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("请求 OpenAI API 失败: %w", err)
+	}
+
+	if len(resp.Choices) == 0 || resp.Choices[0].Message.Content == "" {
+		return "", fmt.Errorf("OpenAI 未返回有效的日报内容")
+	}
+
+	reportContent := p.CleanMarkdownFormatting(resp.Choices[0].Message.Content)
+
+	return reportContent, nil
 }

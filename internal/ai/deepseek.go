@@ -1,23 +1,25 @@
 package ai
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
 
 const deepseekAPIEndpoint = "https://api.deepseek.com/v1/chat/completions"
 
+// DeepseekProvider 实现 Deepseek API 的 Provider
 type DeepseekProvider struct {
 	*BaseProvider
 }
 
+// NewDeepseekProvider 创建 DeepseekProvider 实例
 func NewDeepseekProvider(base *BaseProvider) *DeepseekProvider {
-	return &DeepseekProvider{
-		BaseProvider: base,
-	}
+	return &DeepseekProvider{BaseProvider: base}
 }
 
 type deepseekRequest struct {
@@ -97,4 +99,67 @@ func (p *DeepseekProvider) GenerateCommitMessage(ctx context.Context, info *Comm
 	}
 
 	return message, nil
+}
+
+// GenerateDailyReport 使用 Deepseek 生成日报
+func (p *DeepseekProvider) GenerateDailyReport(ctx context.Context, info *ReportInfo, since, until string) (string, error) {
+	client := &http.Client{}
+	url := "https://api.deepseek.com/chat/completions"
+
+	userPrompt := p.GetUserPromptForReport(info, since, until)
+	// Deepseek 同样不需要特定系统提示生成日报，依赖用户提示
+
+	payload := map[string]interface{}{
+		"model": "deepseek-chat", // 或其他模型
+		"messages": []map[string]string{
+			{"role": "user", "content": userPrompt},
+		},
+		"stream": false, // 确保不使用流式输出
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(payloadBytes))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.APIKey)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("请求 Deepseek API 失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("读取 Deepseek 响应失败: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Deepseek API 返回错误状态 %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
+		return "", fmt.Errorf("解析 Deepseek 响应 JSON 失败: %w", err)
+	}
+
+	choices, ok := result["choices"].([]interface{})
+	if !ok || len(choices) == 0 {
+		return "", fmt.Errorf("Deepseek 响应格式错误: 缺少 choices 字段或为空")
+	}
+	firstChoice, ok := choices[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("Deepseek 响应格式错误: choices 元素格式错误")
+	}
+	message, ok := firstChoice["message"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("Deepseek 响应格式错误: 缺少 message 字段")
+	}
+	content, ok := message["content"].(string)
+	if !ok || content == "" {
+		return "", fmt.Errorf("Deepseek 未返回有效的日报内容")
+	}
+
+	reportContent := p.CleanMarkdownFormatting(content)
+
+	return reportContent, nil
 }
