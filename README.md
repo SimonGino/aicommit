@@ -2,19 +2,17 @@
 
 [English](README_en.md) | 简体中文
 
-一个基于AI的Git提交消息生成工具，支持多个AI提供商（Qwen、OpenAI、DeepSeek），自动生成符合Conventional Commits规范的提交消息。
+一个基于AI的Git提交消息生成工具，自动生成符合Conventional Commits规范的提交消息。
 
 ## 功能特点
 
 - 自动生成标准化的Git提交消息
-- 支持多个AI提供商：
-  - Qwen (通义千问)
-  - OpenAI (GPT-4)
-  - DeepSeek
+- 支持自定义 API URL 和模型
 - 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
 - 支持多语言（英文、简体中文、繁体中文）
 - 美观的命令行界面
 - 交互式提交确认
+- 支持生成日报
 
 ## 提交消息格式
 
@@ -70,17 +68,17 @@ chmod +x /usr/local/bin/aicommit
 
 ## 配置
 
-首次使用前需要配置AI提供商的API密钥：
+首次使用前需要配置API密钥：
 
 ```bash
-# 配置Qwen API
-aicommit config --provider qwen --api-key your-api-key-here
+# 配置API密钥
+aicommit config --api-key your-api-key-here
 
-# 配置OpenAI API
-aicommit config --provider openai --api-key your-api-key-here
+# 配置自定义API基础URL（可选）
+aicommit config --base-url https://your-custom-api-url.com/v1
 
-# 配置DeepSeek API
-aicommit config --provider deepseek --api-key your-api-key-here
+# 配置自定义模型（可选，默认为gpt-4o）
+aicommit config --model gpt-4-turbo
 ```
 
 设置输出语言（可选）：
@@ -99,14 +97,7 @@ git add .  # 或指定文件
 
 2. 生成提交消息：
 ```bash
-aicommit  # 使用默认AI提供商
-```
-
-指定AI提供商：
-```bash
-aicommit --provider qwen     # 使用Qwen
-aicommit --provider openai   # 使用OpenAI
-aicommit --provider deepseek # 使用DeepSeek
+aicommit
 ```
 
 使用自定义提交消息：

@@ -3,7 +3,12 @@ package ai
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
+	"os"
 	"strings"
+
+	openai "github.com/sashabaranov/go-openai"
 )
 
 // CommitInfo 包含生成提交消息所需的信息
@@ -67,14 +72,63 @@ type Provider interface {
 	GenerateDailyReport(ctx context.Context, info *ReportInfo, since, until string) (string, error)
 }
 
-// BaseProvider 提供基本的AI提供商实现
-type BaseProvider struct {
-	APIKey   string
-	Language string
+// OpenAIProvider 实现使用 sashabaranov/go-openai 库的 Provider
+type OpenAIProvider struct {
+	apiKey   string
+	baseURL  string
+	model    string
+	language string
+	client   *openai.Client
+}
+
+// NewProvider 创建统一的 OpenAI Provider 实例
+func NewProvider(apiKey, baseURL, model, language string) (Provider, error) {
+	config := openai.DefaultConfig(apiKey)
+
+	// 设置自定义 URL
+	if baseURL != "" {
+		config.BaseURL = baseURL
+	}
+
+	// 检查是否需要设置代理
+	if proxyURL := getEnv("HTTP_PROXY", ""); proxyURL != "" {
+		proxy, err := url.Parse(proxyURL)
+		if err == nil {
+			transport := &http.Transport{
+				Proxy: http.ProxyURL(proxy),
+			}
+			config.HTTPClient = &http.Client{
+				Transport: transport,
+			}
+		}
+	}
+
+	// 如果没有指定模型，使用默认模型
+	if model == "" {
+		model = openai.GPT4o
+	}
+
+	provider := &OpenAIProvider{
+		apiKey:   apiKey,
+		baseURL:  baseURL,
+		model:    model,
+		language: language,
+		client:   openai.NewClientWithConfig(config),
+	}
+
+	return provider, nil
+}
+
+// 获取环境变量，如果不存在则返回默认值
+func getEnv(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
 }
 
 // BuildFilesList 构建文件列表字符串
-func (p *BaseProvider) BuildFilesList(files []string) string {
+func (p *OpenAIProvider) BuildFilesList(files []string) string {
 	var filesList strings.Builder
 	for _, file := range files {
 		filesList.WriteString("- ")
@@ -85,7 +139,7 @@ func (p *BaseProvider) BuildFilesList(files []string) string {
 }
 
 // CleanMarkdownFormatting 清理Markdown格式标记
-func (p *BaseProvider) CleanMarkdownFormatting(content string) string {
+func (p *OpenAIProvider) CleanMarkdownFormatting(content string) string {
 	// 移除 ```plaintext 和 ``` 标记
 	content = strings.TrimPrefix(content, "```plaintext")
 	content = strings.TrimPrefix(content, "```")
@@ -118,8 +172,8 @@ func (p *BaseProvider) CleanMarkdownFormatting(content string) string {
 }
 
 // GetUserPrompt 根据语言返回用户提示
-func (p *BaseProvider) GetUserPrompt(info *CommitInfo, filesList string) string {
-	switch p.Language {
+func (p *OpenAIProvider) GetUserPrompt(info *CommitInfo, filesList string) string {
+	switch p.language {
 	case "zh-CN":
 		return fmt.Sprintf(`请为以下Git更改生成标准化的提交信息：
 
@@ -166,7 +220,7 @@ Please strictly follow the format requirements in the system prompt.`,
 }
 
 // GetUserPromptForReport 根据语言返回生成日报的用户提示
-func (p *BaseProvider) GetUserPromptForReport(info *ReportInfo, since, until string) string {
+func (p *OpenAIProvider) GetUserPromptForReport(info *ReportInfo, since, until string) string {
 	// 将提交列表格式化为 "- YYYY-MM-DD -- Subject"
 	var commitsFormatted strings.Builder
 	for _, commit := range info.Commits {
@@ -176,7 +230,7 @@ func (p *BaseProvider) GetUserPromptForReport(info *ReportInfo, since, until str
 	}
 	commitsList := strings.TrimSpace(commitsFormatted.String())
 
-	switch p.Language {
+	switch p.language {
 	case "zh-CN":
 		return fmt.Sprintf(`请根据以下 Git commit 记录（格式为 "- YYYY-MM-DD -- Commit Subject"），为日期范围 %s 至 %s 总结生成一份简洁的工作日报。
 
@@ -222,28 +276,9 @@ Please generate the report content:`, since, until, since, until, commitsList)
 	}
 }
 
-// NewProvider 创建指定类型的AI提供商实例
-func NewProvider(providerType, apiKey, language string) (Provider, error) {
-	base := &BaseProvider{
-		APIKey:   apiKey,
-		Language: language,
-	}
-
-	switch providerType {
-	case "qwen":
-		return NewQwenProvider(base), nil
-	case "openai":
-		return NewOpenAIProvider(base), nil
-	case "deepseek":
-		return NewDeepseekProvider(base), nil
-	default:
-		return nil, fmt.Errorf("不支持的AI提供商: %s", providerType)
-	}
-}
-
 // GetCommitTypes 返回指定语言的提交类型
-func (p *BaseProvider) GetCommitTypes() []CommitType {
-	types, ok := commitTypes[p.Language]
+func (p *OpenAIProvider) GetCommitTypes() []CommitType {
+	types, ok := commitTypes[p.language]
 	if !ok {
 		return commitTypes["en"]
 	}
@@ -251,7 +286,7 @@ func (p *BaseProvider) GetCommitTypes() []CommitType {
 }
 
 // GetSystemPrompt 根据语言返回系统提示
-func (p *BaseProvider) GetSystemPrompt() string {
+func (p *OpenAIProvider) GetSystemPrompt() string {
 	// 获取提交类型列表
 	types := p.GetCommitTypes()
 
@@ -261,7 +296,7 @@ func (p *BaseProvider) GetSystemPrompt() string {
 		typeDesc += fmt.Sprintf("- %s: %s\n", t.Type, t.Description)
 	}
 
-	switch p.Language {
+	switch p.language {
 	case "zh-CN":
 		return fmt.Sprintf(`您是一个帮助生成标准化git提交信息的助手。
 请严格遵循以下提交信息格式规则：
@@ -346,4 +381,88 @@ Add JWT-based authentication system with refresh tokens
 BREAKING CHANGE: New authentication headers required
 Fixes #123`, typeDesc)
 	}
+}
+
+// GenerateCommitMessage 使用 OpenAI API 生成提交消息
+func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, info *CommitInfo) (*CommitMessage, error) {
+	// 准备用户提示
+	userPrompt := p.GetUserPrompt(info, p.BuildFilesList(info.FilesChanged))
+	systemPrompt := p.GetSystemPrompt()
+
+	// 创建聊天请求
+	resp, err := p.client.CreateChatCompletion(
+		ctx,
+		openai.ChatCompletionRequest{
+			Model: p.model,
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: systemPrompt,
+				},
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: userPrompt,
+				},
+			},
+			Temperature: 0.7,
+			MaxTokens:   1500,
+		},
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("请求 OpenAI API 失败: %w", err)
+	}
+
+	if len(resp.Choices) == 0 || resp.Choices[0].Message.Content == "" {
+		return nil, fmt.Errorf("OpenAI 未返回有效的提交信息内容")
+	}
+
+	// 清理响应内容中的Markdown格式标记
+	content := resp.Choices[0].Message.Content
+	content = p.CleanMarkdownFormatting(content)
+
+	// 分割标题和正文
+	parts := strings.SplitN(content, "\n\n", 2)
+	message := &CommitMessage{
+		Title: strings.TrimSpace(parts[0]),
+	}
+	if len(parts) > 1 {
+		message.Body = strings.TrimSpace(parts[1])
+	}
+
+	return message, nil
+}
+
+// GenerateDailyReport 使用 OpenAI API 生成日报
+func (p *OpenAIProvider) GenerateDailyReport(ctx context.Context, info *ReportInfo, since, until string) (string, error) {
+	// 准备用户提示
+	userPrompt := p.GetUserPromptForReport(info, since, until)
+
+	// 创建聊天请求
+	resp, err := p.client.CreateChatCompletion(
+		ctx,
+		openai.ChatCompletionRequest{
+			Model: p.model,
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: userPrompt,
+				},
+			},
+			Temperature: 0.7,
+			MaxTokens:   2000,
+		},
+	)
+
+	if err != nil {
+		return "", fmt.Errorf("请求 OpenAI API 失败: %w", err)
+	}
+
+	if len(resp.Choices) == 0 || resp.Choices[0].Message.Content == "" {
+		return "", fmt.Errorf("OpenAI 未返回有效的日报内容")
+	}
+
+	reportContent := p.CleanMarkdownFormatting(resp.Choices[0].Message.Content)
+
+	return reportContent, nil
 }

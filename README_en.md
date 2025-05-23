@@ -2,19 +2,17 @@
 
 English | [简体中文](README.md)
 
-An AI-powered Git commit message generator that supports multiple AI providers (Qwen, OpenAI, DeepSeek) and automatically generates commit messages compliant with the Conventional Commits specification.
+An AI-powered Git commit message generator that automatically generates commit messages following the Conventional Commits specification.
 
 ## Features
 
 - Automatically generate standardized Git commit messages
-- Support for multiple AI providers:
-  - Qwen (Tongyi Qianwen)
-  - OpenAI (GPT-4)
-  - DeepSeek
+- Support for custom API URL and model
 - Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification
-- Multi-language support (English, Simplified Chinese, Traditional Chinese)
-- Beautiful command-line interface
+- Support for multiple languages (English, Simplified Chinese, Traditional Chinese)
+- Beautiful command line interface
 - Interactive commit confirmation
+- Support for daily report generation
 
 ## Commit Message Format
 
@@ -32,9 +30,9 @@ Supported commit types:
 - feat: New feature
 - fix: Bug fix
 - refactor: Code refactoring
-- docs: Documentation changes
+- docs: Documentation updates
 - style: Code style changes
-- test: Testing related changes
+- test: Test related
 - chore: Other updates
 
 ## Installation
@@ -53,9 +51,9 @@ iwr -useb https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/inst
 
 ### Manual Installation
 
-1. Download the latest release package:
+1. Download the latest release:
    - Visit the [Releases](https://github.com/SimonGino/aicommit/releases) page
-   - Download the version suitable for your system
+   - Choose the version suitable for your system
 
 2. Extract and install:
 ```bash
@@ -70,23 +68,23 @@ chmod +x /usr/local/bin/aicommit
 
 ## Configuration
 
-Configure AI provider API keys before first use:
+Configure the API key before first use:
 
 ```bash
-# Configure Qwen API
-aicommit config --provider qwen --api-key your-api-key-here
+# Configure API key
+aicommit config --api-key your-api-key-here
 
-# Configure OpenAI API
-aicommit config --provider openai --api-key your-api-key-here
+# Configure custom API base URL (optional)
+aicommit config --base-url https://your-custom-api-url.com/v1
 
-# Configure DeepSeek API
-aicommit config --provider deepseek --api-key your-api-key-here
+# Configure custom model (optional, default is gpt-4o)
+aicommit config --model gpt-4-turbo
 ```
 
-Set output language (optional):
+Set the output language (optional):
 ```bash
-aicommit config --language zh-CN  # Simplified Chinese (default)
-aicommit config --language en     # English
+aicommit config --language zh-CN  # Simplified Chinese
+aicommit config --language en     # English (default)
 aicommit config --language zh-TW  # Traditional Chinese
 ```
 
@@ -99,14 +97,7 @@ git add .  # or specify files
 
 2. Generate a commit message:
 ```bash
-aicommit  # use default AI provider
-```
-
-Specify an AI provider:
-```bash
-aicommit --provider qwen     # use Qwen
-aicommit --provider openai   # use OpenAI
-aicommit --provider deepseek # use DeepSeek
+aicommit
 ```
 
 Use a custom commit message:
@@ -114,20 +105,31 @@ Use a custom commit message:
 aicommit -m "feat(auth): add user authentication"
 ```
 
-Temporarily specify output language:
+Temporarily specify the output language:
 ```bash
-aicommit -l en     # Generate commit message in English
-aicommit -l zh-CN  # Generate commit message in Simplified Chinese
-aicommit -l zh-TW  # Generate commit message in Traditional Chinese
-aicommit -l zh     # Generate commit message in Simplified Chinese (shorthand)
+aicommit -l en     # generate commit message in English
+aicommit -l zh-CN  # generate commit message in Simplified Chinese
+aicommit -l zh-TW  # generate commit message in Traditional Chinese
+aicommit -l zh     # generate commit message in Simplified Chinese (shorthand)
 ```
 
-3. Generate a commit message:
-```bash
-aicommit report --this-week  # Generate a commit message for the current week
-aicommit report --last-week  # Generate a commit message for the last week
-aicommit report --since 2023-10-01 --until 2023-10-31  # Generate a commit message for a specific date range
-```
+3. Use `aicommit report` to generate daily reports
+
+   Generate work reports based on your Git commit history.
+
+   ```bash
+   # Generate report for this week (default author is current Git config)
+   aicommit report --this-week
+
+   # Generate report for last week
+   aicommit report --last-week
+
+   # Generate report for a specific date range
+   aicommit report --since 2023-10-01 --until 2023-10-31
+
+   # Generate report for a specific author
+   aicommit report --this-week --author "user@example.com"
+   ```
 
 ## Uninstallation
 

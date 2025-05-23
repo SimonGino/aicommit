@@ -8,17 +8,16 @@ import (
 )
 
 type Config struct {
-	QwenAPIKey      string `json:"qwen_api_key,omitempty"`
-	OpenAIAPIKey    string `json:"openai_api_key,omitempty"`
-	DeepseekAPIKey  string `json:"deepseek_api_key,omitempty"`
-	DefaultProvider string `json:"default_provider"`
-	Language        string `json:"language"`
+	APIKey   string `json:"api_key"`
+	BaseURL  string `json:"base_url,omitempty"`
+	Model    string `json:"model,omitempty"`
+	Language string `json:"language"`
 }
 
 func LoadConfig() *Config {
 	cfg := &Config{
-		DefaultProvider: "qwen",
-		Language:        "en",
+		Model:    "gpt-4o",
+		Language: "en",
 	}
 
 	configFile := cfg.ConfigFile()
@@ -55,32 +54,19 @@ func (c *Config) Save() error {
 	return nil
 }
 
-func (c *Config) UpdateAPIKey(provider, apiKey string) error {
-	switch provider {
-	case "qwen":
-		c.QwenAPIKey = apiKey
-	case "openai":
-		c.OpenAIAPIKey = apiKey
-	case "deepseek":
-		c.DeepseekAPIKey = apiKey
-	default:
-		return fmt.Errorf("不支持的AI提供商: %s", provider)
-	}
-
+func (c *Config) UpdateAPIKey(apiKey string) error {
+	c.APIKey = apiKey
 	return c.Save()
 }
 
-func (c *Config) GetAPIKey(provider string) string {
-	switch provider {
-	case "qwen":
-		return c.QwenAPIKey
-	case "openai":
-		return c.OpenAIAPIKey
-	case "deepseek":
-		return c.DeepseekAPIKey
-	default:
-		return ""
-	}
+func (c *Config) UpdateBaseURL(baseURL string) error {
+	c.BaseURL = baseURL
+	return c.Save()
+}
+
+func (c *Config) UpdateModel(model string) error {
+	c.Model = model
+	return c.Save()
 }
 
 func (c *Config) UpdateLanguage(language string) error {

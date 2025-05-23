@@ -31,17 +31,22 @@ func main() {
 			{
 				Name:    "config",
 				Aliases: []string{"c"},
-				Usage:   "配置AI提供商设置",
+				Usage:   "配置AI设置",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "provider",
-						Aliases: []string{"p"},
-						Usage:   "AI提供商 (qwen, openai, deepseek)",
-					},
 					&cli.StringFlag{
 						Name:    "api-key",
 						Aliases: []string{"k"},
 						Usage:   "API密钥",
+					},
+					&cli.StringFlag{
+						Name:    "base-url",
+						Aliases: []string{"u"},
+						Usage:   "自定义API基础URL",
+					},
+					&cli.StringFlag{
+						Name:    "model",
+						Aliases: []string{"m"},
+						Usage:   "指定模型名称",
 					},
 					&cli.StringFlag{
 						Name:    "language",
@@ -56,11 +61,6 @@ func main() {
 				Aliases: []string{"r"},
 				Usage:   "根据Git提交历史生成日报",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "provider",
-						Aliases: []string{"p"},
-						Usage:   "指定AI提供商 (默认使用配置)",
-					},
 					&cli.StringFlag{
 						Name:    "language",
 						Aliases: []string{"l"},
@@ -92,11 +92,6 @@ func main() {
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "provider",
-				Aliases: []string{"p"},
-				Usage:   "使用指定的AI提供商",
-			},
-			&cli.StringFlag{
 				Name:    "message",
 				Aliases: []string{"m"},
 				Usage:   "使用指定的提交消息（跳过AI生成）",
@@ -118,13 +113,25 @@ func main() {
 func configAction(c *cli.Context) error {
 	cfg := config.LoadConfig()
 
-	if provider := c.String("provider"); provider != "" {
-		if apiKey := c.String("api-key"); apiKey != "" {
-			if err := cfg.UpdateAPIKey(provider, apiKey); err != nil {
-				return fmt.Errorf("配置API密钥失败: %w", err)
-			}
-			fmt.Printf("✓ 成功配置 %s API密钥\n", provider)
+	if apiKey := c.String("api-key"); apiKey != "" {
+		if err := cfg.UpdateAPIKey(apiKey); err != nil {
+			return fmt.Errorf("配置API密钥失败: %w", err)
 		}
+		fmt.Printf("✓ 成功配置 API 密钥\n")
+	}
+
+	if baseURL := c.String("base-url"); baseURL != "" {
+		if err := cfg.UpdateBaseURL(baseURL); err != nil {
+			return fmt.Errorf("配置 API 基础 URL 失败: %w", err)
+		}
+		fmt.Printf("✓ 成功配置 API 基础 URL: %s\n", baseURL)
+	}
+
+	if model := c.String("model"); model != "" {
+		if err := cfg.UpdateModel(model); err != nil {
+			return fmt.Errorf("配置模型失败: %w", err)
+		}
+		fmt.Printf("✓ 成功配置模型: %s\n", model)
 	}
 
 	if language := c.String("language"); language != "" {
@@ -178,10 +185,6 @@ func reportAction(c *cli.Context) error {
 
 	// 加载配置
 	cfg := config.LoadConfig()
-	providerName := c.String("provider")
-	if providerName == "" {
-		providerName = cfg.DefaultProvider
-	}
 
 	language := c.String("language")
 	if language == "" {
@@ -196,12 +199,12 @@ func reportAction(c *cli.Context) error {
 		}
 	}
 
-	apiKey := cfg.GetAPIKey(providerName)
+	apiKey := cfg.APIKey
 	if apiKey == "" {
-		return fmt.Errorf("未找到 %s 的API密钥，请先使用 config 命令配置", providerName)
+		return fmt.Errorf("未配置 API 密钥，请先使用 'aicommit config -k YOUR_API_KEY' 配置")
 	}
 
-	aiProvider, err := ai.NewProvider(providerName, apiKey, language)
+	aiProvider, err := ai.NewProvider(apiKey, cfg.BaseURL, cfg.Model, language)
 	if err != nil {
 		return fmt.Errorf("创建AI提供商实例失败: %w", err)
 	}
@@ -377,10 +380,6 @@ func defaultAction(c *cli.Context) error {
 
 	// 加载配置
 	cfg := config.LoadConfig()
-	provider := c.String("provider")
-	if provider == "" {
-		provider = cfg.DefaultProvider
-	}
 
 	// 获取语言设置，优先使用命令行参数
 	language := c.String("language")
@@ -397,11 +396,11 @@ func defaultAction(c *cli.Context) error {
 	}
 
 	// 创建AI提供商实例
-	apiKey := cfg.GetAPIKey(provider)
+	apiKey := cfg.APIKey
 	if apiKey == "" {
-		return fmt.Errorf("未找到 %s 的API密钥，请先使用 'aicommit config -p %s -k YOUR_API_KEY' 配置", provider, provider)
+		return fmt.Errorf("未配置 API 密钥，请先使用 'aicommit config -k YOUR_API_KEY' 配置")
 	}
-	aiProvider, err := ai.NewProvider(provider, apiKey, language)
+	aiProvider, err := ai.NewProvider(apiKey, cfg.BaseURL, cfg.Model, language)
 	if err != nil {
 		return fmt.Errorf("创建AI提供商实例失败: %w", err)
 	}
