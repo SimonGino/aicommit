@@ -97,7 +97,7 @@ type OpenAIProvider struct {
 func NewProvider(apiKey, baseURL, model, language, provider, azureAPIVersion string) (Provider, error) {
 	var config openai.ClientConfig
 	var effectiveBaseURL string
-	
+
 	// 根据 provider 类型决定使用哪个配置
 	switch provider {
 	case "azure":
@@ -110,17 +110,17 @@ func NewProvider(apiKey, baseURL, model, language, provider, azureAPIVersion str
 		if model == "" {
 			return nil, fmt.Errorf("Azure OpenAI 模型/部署名称不能为空")
 		}
-		
+
 		// 如果没有指定 API 版本，使用默认版本
 		if azureAPIVersion == "" {
 			azureAPIVersion = "2024-02-15-preview"
 		}
-		
+
 		// Azure OpenAI 配置
 		azureBaseURL := strings.TrimRight(baseURL, "/")
 		config = openai.DefaultAzureConfig(apiKey, azureBaseURL)
 		config.APIVersion = azureAPIVersion
-		
+
 		// 创建自定义HTTP客户端以添加正确的认证头
 		config.HTTPClient = &http.Client{
 			Transport: &azureTransport{
@@ -128,9 +128,9 @@ func NewProvider(apiKey, baseURL, model, language, provider, azureAPIVersion str
 				apiKey:    apiKey,
 			},
 		}
-		
+
 		effectiveBaseURL = azureBaseURL
-		
+
 	default:
 		// 默认使用 OpenAI
 		if apiKey == "" {
@@ -138,7 +138,7 @@ func NewProvider(apiKey, baseURL, model, language, provider, azureAPIVersion str
 		}
 		config = openai.DefaultConfig(apiKey)
 		effectiveBaseURL = baseURL
-		
+
 		// 设置自定义 URL (仅对 OpenAI)
 		if baseURL != "" {
 			config.BaseURL = baseURL

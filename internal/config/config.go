@@ -8,19 +8,19 @@ import (
 )
 
 type Config struct {
-	APIKey           string `json:"api_key"`
-	BaseURL          string `json:"base_url,omitempty"`  // 对于 OpenAI 是 base URL，对于 Azure 是完整的 endpoint URL
-	Model            string `json:"model,omitempty"`
-	Language         string `json:"language"`
-	Provider         string `json:"provider,omitempty"`           // "openai" or "azure"
-	AzureAPIVersion  string `json:"azure_api_version,omitempty"`  // Azure API 版本，如 "2024-02-15-preview"
+	APIKey          string `json:"api_key"`
+	BaseURL         string `json:"base_url,omitempty"` // 对于 OpenAI 是 base URL，对于 Azure 是完整的 endpoint URL
+	Model           string `json:"model,omitempty"`
+	Language        string `json:"language"`
+	Provider        string `json:"provider,omitempty"`          // "openai" or "azure"
+	AzureAPIVersion string `json:"azure_api_version,omitempty"` // Azure API 版本，如 "2024-02-15-preview"
 }
 
 func LoadConfig() *Config {
 	cfg := &Config{
 		Model:           "gpt-4o",
 		Language:        "en",
-		Provider:        "openai",        // 默认使用 OpenAI
+		Provider:        "openai",             // 默认使用 OpenAI
 		AzureAPIVersion: "2024-02-15-preview", // Azure 的默认 API 版本
 	}
 

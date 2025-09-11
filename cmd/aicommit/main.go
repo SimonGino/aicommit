@@ -59,8 +59,8 @@ func main() {
 						Usage:   "AI提供商 (openai, azure)",
 					},
 					&cli.StringFlag{
-						Name:    "azure-api-version",
-						Usage:   "Azure OpenAI API版本 (默认: 2024-02-15-preview)",
+						Name:  "azure-api-version",
+						Usage: "Azure OpenAI API版本 (默认: 2024-02-15-preview)",
 					},
 				},
 				Action: configAction,
