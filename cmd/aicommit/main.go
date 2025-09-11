@@ -36,7 +36,7 @@ func main() {
 					&cli.StringFlag{
 						Name:    "api-key",
 						Aliases: []string{"k"},
-						Usage:   "API密钥",
+						Usage:   "OpenAI API密钥",
 					},
 					&cli.StringFlag{
 						Name:    "base-url",
@@ -52,6 +52,15 @@ func main() {
 						Name:    "language",
 						Aliases: []string{"l"},
 						Usage:   "输出语言 (en, zh-CN, zh-TW)",
+					},
+					&cli.StringFlag{
+						Name:    "provider",
+						Aliases: []string{"p"},
+						Usage:   "AI提供商 (openai, azure)",
+					},
+					&cli.StringFlag{
+						Name:    "azure-api-version",
+						Usage:   "Azure OpenAI API版本 (默认: 2024-02-15-preview)",
 					},
 				},
 				Action: configAction,
@@ -122,9 +131,9 @@ func configAction(c *cli.Context) error {
 
 	if baseURL := c.String("base-url"); baseURL != "" {
 		if err := cfg.UpdateBaseURL(baseURL); err != nil {
-			return fmt.Errorf("配置 API 基础 URL 失败: %w", err)
+			return fmt.Errorf("配置 URL 失败: %w", err)
 		}
-		fmt.Printf("✓ 成功配置 API 基础 URL: %s\n", baseURL)
+		fmt.Printf("✓ 成功配置 URL: %s\n", baseURL)
 	}
 
 	if model := c.String("model"); model != "" {
@@ -139,6 +148,20 @@ func configAction(c *cli.Context) error {
 			return fmt.Errorf("更新语言失败: %w", err)
 		}
 		fmt.Printf("✓ 成功设置语言为 %s\n", language)
+	}
+
+	if provider := c.String("provider"); provider != "" {
+		if err := cfg.UpdateProvider(provider); err != nil {
+			return fmt.Errorf("配置提供商失败: %w", err)
+		}
+		fmt.Printf("✓ 成功配置提供商: %s\n", provider)
+	}
+
+	if azureAPIVersion := c.String("azure-api-version"); azureAPIVersion != "" {
+		if err := cfg.UpdateAzureAPIVersion(azureAPIVersion); err != nil {
+			return fmt.Errorf("配置Azure API版本失败: %w", err)
+		}
+		fmt.Printf("✓ 成功配置 Azure API 版本: %s\n", azureAPIVersion)
 	}
 
 	fmt.Printf("配置文件: %s\n", cfg.ConfigFile())
@@ -200,11 +223,20 @@ func reportAction(c *cli.Context) error {
 	}
 
 	apiKey := cfg.APIKey
-	if apiKey == "" {
-		return fmt.Errorf("未配置 API 密钥，请先使用 'aicommit config -k YOUR_API_KEY' 配置")
+	if cfg.Provider == "azure" {
+		if cfg.APIKey == "" {
+			return fmt.Errorf("未配置 Azure OpenAI API 密钥，请先使用 'aicommit config --api-key YOUR_API_KEY' 配置")
+		}
+		if cfg.BaseURL == "" {
+			return fmt.Errorf("未配置 Azure OpenAI endpoint URL，请先使用 'aicommit config --base-url YOUR_ENDPOINT_URL' 配置")
+		}
+	} else {
+		if apiKey == "" {
+			return fmt.Errorf("未配置 OpenAI API 密钥，请先使用 'aicommit config --api-key YOUR_API_KEY' 配置")
+		}
 	}
 
-	aiProvider, err := ai.NewProvider(apiKey, cfg.BaseURL, cfg.Model, language)
+	aiProvider, err := ai.NewProvider(apiKey, cfg.BaseURL, cfg.Model, language, cfg.Provider, cfg.AzureAPIVersion)
 	if err != nil {
 		return fmt.Errorf("创建AI提供商实例失败: %w", err)
 	}
@@ -397,10 +429,19 @@ func defaultAction(c *cli.Context) error {
 
 	// 创建AI提供商实例
 	apiKey := cfg.APIKey
-	if apiKey == "" {
-		return fmt.Errorf("未配置 API 密钥，请先使用 'aicommit config -k YOUR_API_KEY' 配置")
+	if cfg.Provider == "azure" {
+		if cfg.APIKey == "" {
+			return fmt.Errorf("未配置 Azure OpenAI API 密钥，请先使用 'aicommit config --api-key YOUR_API_KEY' 配置")
+		}
+		if cfg.BaseURL == "" {
+			return fmt.Errorf("未配置 Azure OpenAI endpoint URL，请先使用 'aicommit config --base-url YOUR_ENDPOINT_URL' 配置")
+		}
+	} else {
+		if apiKey == "" {
+			return fmt.Errorf("未配置 OpenAI API 密钥，请先使用 'aicommit config --api-key YOUR_API_KEY' 配置")
+		}
 	}
-	aiProvider, err := ai.NewProvider(apiKey, cfg.BaseURL, cfg.Model, language)
+	aiProvider, err := ai.NewProvider(apiKey, cfg.BaseURL, cfg.Model, language, cfg.Provider, cfg.AzureAPIVersion)
 	if err != nil {
 		return fmt.Errorf("创建AI提供商实例失败: %w", err)
 	}

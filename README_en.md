@@ -7,6 +7,7 @@ An AI-powered Git commit message generator that automatically generates commit m
 ## Features
 
 - Automatically generate standardized Git commit messages
+- Support for OpenAI and Azure OpenAI
 - Support for custom API URL and model
 - Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification
 - Support for multiple languages (English, Simplified Chinese, Traditional Chinese)
@@ -68,18 +69,67 @@ chmod +x /usr/local/bin/aicommit
 
 ## Configuration
 
-Configure the API key before first use:
+Configure API settings before first use. Supports both OpenAI and Azure OpenAI providers.
+
+### OpenAI Configuration
 
 ```bash
-# Configure API key
-aicommit config --api-key your-api-key-here
+# Configure OpenAI API key
+aicommit config --api-key your-openai-api-key-here
 
 # Configure custom API base URL (optional)
 aicommit config --base-url https://your-custom-api-url.com/v1
 
 # Configure custom model (optional, default is gpt-4o)
 aicommit config --model gpt-4-turbo
+
+# Set provider to OpenAI (default)
+aicommit config --provider openai
 ```
+
+Configuration file example (`~/.config/aicommit/config.json`):
+```json
+{
+  "api_key": "sk-your-openai-api-key",
+  "base_url": "https://api.openai.com/v1",
+  "model": "gpt-4o",
+  "language": "en",
+  "provider": "openai"
+}
+```
+
+### Azure OpenAI Configuration
+
+```bash
+# Set provider to Azure OpenAI
+aicommit config --provider azure
+
+# Configure Azure OpenAI API key
+aicommit config --api-key your-azure-api-key
+
+# Configure Azure OpenAI complete endpoint URL
+aicommit config --base-url "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions"
+
+# Configure API version (optional, default is 2024-02-15-preview)
+aicommit config --azure-api-version "2024-02-15-preview"
+
+# Configure model name (use your deployment name)
+aicommit config --model your-deployment-name
+```
+
+Configuration file example (`~/.config/aicommit/config.json`):
+```json
+{
+  "api_key": "your-azure-api-key",
+  "base_url": "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions",
+  "model": "gpt-35-turbo",
+  "language": "en",
+  "provider": "azure",
+  "azure_api_version": "2024-02-15-preview"
+}
+```
+
+### General Configuration
 
 Set the output language (optional):
 ```bash

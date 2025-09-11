@@ -11,6 +11,18 @@ import (
 	openai "github.com/sashabaranov/go-openai"
 )
 
+// azureTransport 用于添加Azure OpenAI特定的认证头
+type azureTransport struct {
+	transport http.RoundTripper
+	apiKey    string
+}
+
+func (t *azureTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Azure OpenAI 使用 api-key 头
+	req.Header.Set("api-key", t.apiKey)
+	return t.transport.RoundTrip(req)
+}
+
 // CommitInfo 包含生成提交消息所需的信息
 type CommitInfo struct {
 	FilesChanged []string
@@ -81,13 +93,56 @@ type OpenAIProvider struct {
 	client   *openai.Client
 }
 
-// NewProvider 创建统一的 OpenAI Provider 实例
-func NewProvider(apiKey, baseURL, model, language string) (Provider, error) {
-	config := openai.DefaultConfig(apiKey)
-
-	// 设置自定义 URL
-	if baseURL != "" {
-		config.BaseURL = baseURL
+// NewProvider 创建统一的 Provider 实例，支持 OpenAI 和 Azure OpenAI
+func NewProvider(apiKey, baseURL, model, language, provider, azureAPIVersion string) (Provider, error) {
+	var config openai.ClientConfig
+	var effectiveBaseURL string
+	
+	// 根据 provider 类型决定使用哪个配置
+	switch provider {
+	case "azure":
+		if apiKey == "" {
+			return nil, fmt.Errorf("Azure OpenAI API 密钥不能为空")
+		}
+		if baseURL == "" {
+			return nil, fmt.Errorf("Azure OpenAI endpoint URL 不能为空")
+		}
+		if model == "" {
+			return nil, fmt.Errorf("Azure OpenAI 模型/部署名称不能为空")
+		}
+		
+		// 如果没有指定 API 版本，使用默认版本
+		if azureAPIVersion == "" {
+			azureAPIVersion = "2024-02-15-preview"
+		}
+		
+		// Azure OpenAI 配置
+		azureBaseURL := strings.TrimRight(baseURL, "/")
+		config = openai.DefaultAzureConfig(apiKey, azureBaseURL)
+		config.APIVersion = azureAPIVersion
+		
+		// 创建自定义HTTP客户端以添加正确的认证头
+		config.HTTPClient = &http.Client{
+			Transport: &azureTransport{
+				transport: http.DefaultTransport,
+				apiKey:    apiKey,
+			},
+		}
+		
+		effectiveBaseURL = azureBaseURL
+		
+	default:
+		// 默认使用 OpenAI
+		if apiKey == "" {
+			return nil, fmt.Errorf("OpenAI API 密钥不能为空")
+		}
+		config = openai.DefaultConfig(apiKey)
+		effectiveBaseURL = baseURL
+		
+		// 设置自定义 URL (仅对 OpenAI)
+		if baseURL != "" {
+			config.BaseURL = baseURL
+		}
 	}
 
 	// 检查是否需要设置代理
@@ -105,18 +160,23 @@ func NewProvider(apiKey, baseURL, model, language string) (Provider, error) {
 
 	// 如果没有指定模型，使用默认模型
 	if model == "" {
-		model = openai.GPT4o
+		if provider == "azure" {
+			// Azure OpenAI 通常使用部署名称作为模型名
+			model = "gpt-4o"
+		} else {
+			model = openai.GPT4o
+		}
 	}
 
-	provider := &OpenAIProvider{
+	providerInstance := &OpenAIProvider{
 		apiKey:   apiKey,
-		baseURL:  baseURL,
+		baseURL:  effectiveBaseURL,
 		model:    model,
 		language: language,
 		client:   openai.NewClientWithConfig(config),
 	}
 
-	return provider, nil
+	return providerInstance, nil
 }
 
 // 获取环境变量，如果不存在则返回默认值

@@ -8,16 +8,20 @@ import (
 )
 
 type Config struct {
-	APIKey   string `json:"api_key"`
-	BaseURL  string `json:"base_url,omitempty"`
-	Model    string `json:"model,omitempty"`
-	Language string `json:"language"`
+	APIKey           string `json:"api_key"`
+	BaseURL          string `json:"base_url,omitempty"`  // 对于 OpenAI 是 base URL，对于 Azure 是完整的 endpoint URL
+	Model            string `json:"model,omitempty"`
+	Language         string `json:"language"`
+	Provider         string `json:"provider,omitempty"`           // "openai" or "azure"
+	AzureAPIVersion  string `json:"azure_api_version,omitempty"`  // Azure API 版本，如 "2024-02-15-preview"
 }
 
 func LoadConfig() *Config {
 	cfg := &Config{
-		Model:    "gpt-4o",
-		Language: "en",
+		Model:           "gpt-4o",
+		Language:        "en",
+		Provider:        "openai",        // 默认使用 OpenAI
+		AzureAPIVersion: "2024-02-15-preview", // Azure 的默认 API 版本
 	}
 
 	configFile := cfg.ConfigFile()
@@ -77,6 +81,22 @@ func (c *Config) UpdateLanguage(language string) error {
 		return fmt.Errorf("不支持的语言: %s", language)
 	}
 
+	return c.Save()
+}
+
+func (c *Config) UpdateProvider(provider string) error {
+	switch provider {
+	case "openai", "azure":
+		c.Provider = provider
+	default:
+		return fmt.Errorf("不支持的提供商: %s", provider)
+	}
+
+	return c.Save()
+}
+
+func (c *Config) UpdateAzureAPIVersion(version string) error {
+	c.AzureAPIVersion = version
 	return c.Save()
 }
 

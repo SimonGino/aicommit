@@ -7,6 +7,7 @@
 ## 功能特点
 
 - 自动生成标准化的Git提交消息
+- 支持 OpenAI 和 Azure OpenAI
 - 支持自定义 API URL 和模型
 - 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
 - 支持多语言（英文、简体中文、繁体中文）
@@ -68,18 +69,67 @@ chmod +x /usr/local/bin/aicommit
 
 ## 配置
 
-首次使用前需要配置API密钥：
+首次使用前需要配置API设置。支持 OpenAI 和 Azure OpenAI 两种提供商。
+
+### OpenAI 配置
 
 ```bash
-# 配置API密钥
-aicommit config --api-key your-api-key-here
+# 配置 OpenAI API 密钥
+aicommit config --api-key your-openai-api-key-here
 
 # 配置自定义API基础URL（可选）
 aicommit config --base-url https://your-custom-api-url.com/v1
 
 # 配置自定义模型（可选，默认为gpt-4o）
 aicommit config --model gpt-4-turbo
+
+# 设置提供商为 OpenAI（默认）
+aicommit config --provider openai
 ```
+
+配置文件示例（`~/.config/aicommit/config.json`）：
+```json
+{
+  "api_key": "sk-your-openai-api-key",
+  "base_url": "https://api.openai.com/v1",
+  "model": "gpt-4o",
+  "language": "zh-CN",
+  "provider": "openai"
+}
+```
+
+### Azure OpenAI 配置
+
+```bash
+# 设置提供商为 Azure OpenAI
+aicommit config --provider azure
+
+# 配置 Azure OpenAI API 密钥
+aicommit config --api-key your-azure-api-key
+
+# 配置 Azure OpenAI 完整 endpoint URL
+aicommit config --base-url "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions"
+
+# 配置 API 版本（可选，默认为 2024-02-15-preview）
+aicommit config --azure-api-version "2024-02-15-preview"
+
+# 配置模型名称（使用你的部署名称）
+aicommit config --model your-deployment-name
+```
+
+配置文件示例（`~/.config/aicommit/config.json`）：
+```json
+{
+  "api_key": "your-azure-api-key",
+  "base_url": "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions",
+  "model": "gpt-35-turbo",
+  "language": "zh-CN",
+  "provider": "azure",
+  "azure_api_version": "2024-02-15-preview"
+}
+```
+
+### 通用配置
 
 设置输出语言（可选）：
 ```bash
