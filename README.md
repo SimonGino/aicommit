@@ -6,180 +6,160 @@
 
 ## 功能特点
 
-- 自动生成标准化的Git提交消息
-- 支持 OpenAI 和 Azure OpenAI
-- 支持自定义 API URL 和模型
-- 遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
-- 支持多语言（英文、简体中文、繁体中文）
-- 美观的命令行界面
-- 交互式提交确认
-- 支持生成日报
+- 🤖 **AI驱动** - 自动分析代码变更，生成标准化提交消息
+- 🎯 **交互式操作** - 支持键盘快捷键，快速选择操作
+- 📁 **灵活的文件选择** - 可选择暂存区、手动选择文件或暂存全部
+- ✏️ **消息编辑** - 支持编辑生成的消息或重新生成
+- 🔧 **配置检测** - 内置 `check` 命令验证配置和API连通性
+- 🌍 **多语言支持** - 英文、简体中文、繁体中文
+- ☁️ **多平台** - 支持 OpenAI 和 Azure OpenAI
+- 📊 **日报生成** - 根据Git提交历史生成工作日报
 
-## 提交消息格式
+## 快速开始
 
-生成的提交消息严格遵循以下格式：
+### 安装
 
-```
-<类型>(<范围>): <主题>
-
-<正文>
-
-<脚注>
-```
-
-支持的提交类型：
-- feat: 新功能
-- fix: 修复缺陷
-- refactor: 代码重构
-- docs: 文档更新
-- style: 代码格式
-- test: 测试相关
-- chore: 其他更新
-
-## 安装
-
-### 快速安装（推荐）
-
-#### Linux/macOS
 ```bash
+# Linux/macOS
 curl -fsSL https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.sh | sudo bash
-```
 
-#### Windows (以管理员身份运行 PowerShell)
-```powershell
+# Windows (以管理员身份运行 PowerShell)
 iwr -useb https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.ps1 | iex
 ```
 
-### 手动安装
-
-1. 下载最新版本的发布包：
-   - 访问 [Releases](https://github.com/SimonGino/aicommit/releases) 页面
-   - 选择适合你系统的版本下载
-
-2. 解压并安装：
-```bash
-# Linux/macOS
-tar xzf aicommit_*.tar.gz
-sudo mv aicommit /usr/local/bin/
-chmod +x /usr/local/bin/aicommit
-
-# Windows
-# 解压zip文件，并将aicommit.exe添加到系统PATH
-```
-
-## 配置
-
-首次使用前需要配置API设置。支持 OpenAI 和 Azure OpenAI 两种提供商。
-
-### OpenAI 配置
+### 配置
 
 ```bash
 # 配置 OpenAI API 密钥
-aicommit config --api-key your-openai-api-key-here
+aicommit config --api-key your-openai-api-key
 
-# 配置自定义API基础URL（可选）
-aicommit config --base-url https://your-custom-api-url.com/v1
-
-# 配置自定义模型（可选，默认为gpt-4o）
-aicommit config --model gpt-4-turbo
-
-# 设置提供商为 OpenAI（默认）
-aicommit config --provider openai
+# 检查配置是否正确
+aicommit check
 ```
 
-配置文件示例（`~/.config/aicommit/config.json`）：
-```json
-{
-  "api_key": "sk-your-openai-api-key",
-  "base_url": "https://api.openai.com/v1",
-  "model": "gpt-4o",
-  "language": "zh-CN",
-  "provider": "openai"
-}
-```
-
-### Azure OpenAI 配置
+### 使用
 
 ```bash
-# 设置提供商为 Azure OpenAI
+# 交互式提交（推荐）
+aicommit
+
+# 使用自定义消息
+aicommit -m "feat: 添加新功能"
+```
+
+## 交互式流程
+
+运行 `aicommit` 后，会显示交互式界面：
+
+```
+检测到以下变更:
+
+已暂存 (Staged):
+  ✓ src/main.go
+
+未暂存 (Modified):
+  • config.json
+
+请选择操作:
+  [a] 使用当前暂存区内容生成提交消息
+  [s] 选择要暂存的文件
+  [A] 暂存所有变更 (git add .)
+  [c] 取消
+
+请按键选择: a
+
+正在生成提交消息...
+
+✔ 生成的提交消息：
+┌────────────────────────────────────────────────────────────┐
+│ feat(main): 添加用户认证功能                                │
+│                                                            │
+│ - 实现 JWT 令牌验证                                        │
+│ - 添加用户登录接口                                         │
+└────────────────────────────────────────────────────────────┘
+
+请选择操作:
+  [a] 接受并提交
+  [e] 编辑后提交
+  [r] 重新生成
+  [c] 取消
+
+请按键选择: a
+
+✓ 已提交更改
+```
+
+## 命令
+
+| 命令 | 说明 |
+|------|------|
+| `aicommit` | 交互式生成并提交 |
+| `aicommit -m "msg"` | 使用指定消息提交 |
+| `aicommit check` | 检查配置和API连通性 |
+| `aicommit config` | 配置设置 |
+| `aicommit report` | 生成日报 |
+
+## 配置
+
+### OpenAI
+
+```bash
+aicommit config --provider openai
+aicommit config --api-key sk-your-api-key
+aicommit config --model gpt-4o  # 可选
+```
+
+### Azure OpenAI
+
+```bash
 aicommit config --provider azure
-
-# 配置 Azure OpenAI API 密钥
-aicommit config --api-key your-azure-api-key
-
-# 配置 Azure OpenAI 完整 endpoint URL
-aicommit config --base-url "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions"
-
-# 配置 API 版本（可选，默认为 2024-02-15-preview）
+aicommit config --api-key your-azure-key
+aicommit config --base-url "https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions"
 aicommit config --azure-api-version "2024-02-15-preview"
-
-# 配置模型名称（使用你的部署名称）
-aicommit config --model your-deployment-name
 ```
 
-配置文件示例（`~/.config/aicommit/config.json`）：
-```json
-{
-  "api_key": "your-azure-api-key",
-  "base_url": "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions",
-  "model": "gpt-35-turbo",
-  "language": "zh-CN",
-  "provider": "azure",
-  "azure_api_version": "2024-02-15-preview"
-}
-```
+### 语言设置
 
-### 通用配置
-
-设置输出语言（可选）：
 ```bash
 aicommit config --language zh-CN  # 简体中文（默认）
 aicommit config --language en     # 英文
 aicommit config --language zh-TW  # 繁体中文
 ```
 
-## 使用方法
+## 日报生成
 
-1. 暂存要提交的更改：
 ```bash
-git add .  # 或指定文件
+# 本周日报
+aicommit report --this-week
+
+# 上周日报
+aicommit report --last-week
+
+# 指定日期范围
+aicommit report --since 2024-01-01 --until 2024-01-31
 ```
 
-2. 生成提交消息：
-```bash
-aicommit
+## 提交消息格式
+
+遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```
+<类型>(<范围>): <主题>
+
+<正文>
 ```
 
-使用自定义提交消息：
+支持的类型：`feat` | `fix` | `refactor` | `docs` | `style` | `test` | `chore`
+
+## 开发
+
 ```bash
-aicommit -m "feat(auth): 添加用户认证功能"
+git clone https://github.com/SimonGino/aicommit.git
+cd aicommit
+go mod download
+go test ./...
+go build -o aicommit ./cmd/aicommit
 ```
-
-临时指定输出语言：
-```bash
-aicommit -l en     # 使用英文生成提交消息
-aicommit -l zh-CN  # 使用简体中文生成提交消息
-aicommit -l zh-TW  # 使用繁体中文生成提交消息
-aicommit -l zh     # 使用简体中文生成提交消息（简写）
-```
-
-3. 使用 `aicommit report` 生成日报
-
-   根据你的 Git 提交历史生成工作日报。
-
-   ```bash
-   # 生成本周日报 (默认作者为当前 Git 配置)
-   aicommit report --this-week
-
-   # 生成上周日报
-   aicommit report --last-week
-
-   # 生成指定日期范围的日报
-   aicommit report --since 2023-10-01 --until 2023-10-31
-
-   # 为指定作者生成本周日报
-   aicommit report --this-week --author "user@example.com"
-   ```
 
 ## 卸载
 
@@ -191,28 +171,6 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SimonGino/aicommit/
 iwr -useb https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/uninstall.ps1 | iex
 ```
 
-## 开发
-
-1. 克隆仓库：
-```bash
-git clone https://github.com/SimonGino/aicommit.git
-cd aicommit
-```
-
-2. 安装依赖：
-```bash
-go mod download
-```
-
-3. 运行测试：
-```bash
-go test ./...
-```
-
-## 贡献
-
-欢迎提交Pull Request或Issue！
-
 ## 许可证
 
-MIT 
+MIT
