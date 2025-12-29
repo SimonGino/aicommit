@@ -116,6 +116,82 @@ func (r *Repository) StageAll() error {
 	return nil
 }
 
+// GetUntrackedFiles 获取未跟踪的文件
+func (r *Repository) GetUntrackedFiles() ([]string, error) {
+	cmd := exec.Command("git", "ls-files", "--others", "--exclude-standard")
+	cmd.Dir = r.path
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("获取未跟踪文件失败: %w", err)
+	}
+
+	if len(output) == 0 {
+		return nil, nil
+	}
+
+	files := strings.Split(strings.TrimSpace(string(output)), "\n")
+	return files, nil
+}
+
+// GetAllChanges 获取所有变更文件 (已暂存、未暂存、未跟踪)
+func (r *Repository) GetAllChanges() (staged, modified, untracked []string, err error) {
+	staged, err = r.GetStagedChanges()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	modified, err = r.GetUnstagedChanges()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	untracked, err = r.GetUntrackedFiles()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return staged, modified, untracked, nil
+}
+
+// StageFiles 暂存指定文件
+func (r *Repository) StageFiles(files []string) error {
+	if len(files) == 0 {
+		return nil
+	}
+
+	args := append([]string{"add"}, files...)
+	cmd := exec.Command("git", args...)
+	cmd.Dir = r.path
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("暂存文件失败: %w", err)
+	}
+
+	return nil
+}
+
+// GetDiffForFiles 获取指定文件的差异内容
+func (r *Repository) GetDiffForFiles(files []string, staged bool) (string, error) {
+	if len(files) == 0 {
+		return "", nil
+	}
+
+	args := []string{"diff"}
+	if staged {
+		args = append(args, "--cached")
+	}
+	args = append(args, "--")
+	args = append(args, files...)
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = r.path
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("获取差异内容失败: %w", err)
+	}
+
+	return string(output), nil
+}
+
 // GetUserInfo 获取 Git 用户信息
 func (r *Repository) GetUserInfo() (name, email string, err error) {
 	cmdName := exec.Command("git", "config", "user.name")

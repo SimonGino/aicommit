@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"github.com/SimonGino/aicommit/internal/ai"
 	"github.com/SimonGino/aicommit/internal/config"
 	"github.com/SimonGino/aicommit/internal/git"
+	"github.com/SimonGino/aicommit/internal/interactive"
 	"github.com/urfave/cli/v2"
 )
 
@@ -97,6 +97,11 @@ func main() {
 					},
 				},
 				Action: reportAction,
+			},
+			{
+				Name:   "check",
+				Usage:  "检查配置和 API 连通性",
+				Action: checkAction,
 			},
 		},
 		Flags: []cli.Flag{
@@ -332,63 +337,101 @@ func validateLanguage(lang string) error {
 	}
 }
 
+func checkAction(c *cli.Context) error {
+	cfg := config.LoadConfig()
+
+	// 创建 AI 提供商实例
+	provider, err := ai.NewProvider(
+		cfg.APIKey, cfg.BaseURL, cfg.Model,
+		cfg.Language, cfg.Provider, cfg.AzureAPIVersion,
+	)
+	if err != nil {
+		fmt.Printf("\n✗ 创建 AI 提供商失败: %v\n", err)
+		return nil
+	}
+
+	// 执行检测
+	result := provider.(*ai.OpenAIProvider).Check(c.Context)
+	ai.PrintCheckResult(result)
+	return nil
+}
+
 func defaultAction(c *cli.Context) error {
 	repo, err := git.GetRepo("")
 	if err != nil {
 		return fmt.Errorf("获取Git仓库失败: %w", err)
 	}
 
-	// 获取未暂存的更改
-	unstaged, err := repo.GetUnstagedChanges()
-	if err != nil {
-		return fmt.Errorf("获取未暂存更改失败: %w", err)
-	}
-
-	if len(unstaged) > 0 {
-		fmt.Println("\n未暂存的更改:")
-		for _, file := range unstaged {
-			fmt.Printf("  • %s\n", file)
-		}
-
-		if c.String("message") == "" {
-			reader := bufio.NewReader(os.Stdin)
-			fmt.Print("\n是否要暂存这些更改？[y/N] ")
-			answer, err := reader.ReadString('\n')
-			if err != nil {
-				return fmt.Errorf("读取用户输入失败: %w", err)
-			}
-			answer = strings.TrimSpace(strings.ToLower(answer))
-			if answer == "y" {
-				if err := repo.StageAll(); err != nil {
-					return err
-				}
-				fmt.Println("✓ 已暂存所有更改")
-			}
-		}
-	}
-
-	// 获取已暂存的更改
-	staged, err := repo.GetStagedChanges()
-	if err != nil {
-		return fmt.Errorf("获取已暂存更改失败: %w", err)
-	}
-
-	if len(staged) == 0 {
-		return fmt.Errorf("没有找到已暂存的更改。使用 'git add' 来暂存你的更改")
-	}
-
-	fmt.Println("\n已暂存的更改:")
-	for _, file := range staged {
-		fmt.Printf("  • %s\n", file)
-	}
-
-	// 如果指定了提交消息，直接使用
+	// 如果指定了提交消息，直接使用旧逻辑
 	if message := c.String("message"); message != "" {
+		staged, err := repo.GetStagedChanges()
+		if err != nil {
+			return fmt.Errorf("获取已暂存更改失败: %w", err)
+		}
+		if len(staged) == 0 {
+			return fmt.Errorf("没有找到已暂存的更改。使用 'git add' 来暂存你的更改")
+		}
 		if err := repo.Commit(message); err != nil {
 			return err
 		}
 		fmt.Printf("✓ 已提交更改：%s\n", message)
 		return nil
+	}
+
+	// 获取所有变更
+	staged, modified, untracked, err := repo.GetAllChanges()
+	if err != nil {
+		return fmt.Errorf("获取变更失败: %w", err)
+	}
+
+	// 检查是否有任何变更
+	if len(staged) == 0 && len(modified) == 0 && len(untracked) == 0 {
+		fmt.Println("没有检测到任何变更")
+		return nil
+	}
+
+	// 显示文件状态并让用户选择操作
+	action, err := interactive.ShowFileStatusAndSelect(staged, modified, untracked)
+	if err != nil {
+		return fmt.Errorf("交互式选择失败: %w", err)
+	}
+
+	switch action {
+	case "use-staged":
+		// 使用当前暂存区
+	case "select-files":
+		files, err := interactive.SelectFilesToStage(staged, modified, untracked)
+		if err != nil {
+			return fmt.Errorf("文件选择失败: %w", err)
+		}
+		if len(files) == 0 {
+			fmt.Println("没有选择任何文件，操作取消")
+			return nil
+		}
+		if err := repo.StageFiles(files); err != nil {
+			return err
+		}
+		fmt.Printf("✓ 已暂存 %d 个文件\n", len(files))
+	case "stage-all":
+		if err := repo.StageAll(); err != nil {
+			return err
+		}
+		fmt.Println("✓ 已暂存所有变更")
+	case "cancel":
+		fmt.Println("操作已取消")
+		return nil
+	default:
+		return nil
+	}
+
+	// 重新获取已暂存的更改
+	staged, err = repo.GetStagedChanges()
+	if err != nil {
+		return fmt.Errorf("获取已暂存更改失败: %w", err)
+	}
+
+	if len(staged) == 0 {
+		return fmt.Errorf("没有找到已暂存的更改")
 	}
 
 	// 获取差异内容
@@ -421,7 +464,6 @@ func defaultAction(c *cli.Context) error {
 		if err := validateLanguage(language); err != nil {
 			return err
 		}
-		// 修正 zh -> zh-CN
 		if language == "zh" {
 			language = "zh-CN"
 		}
@@ -446,41 +488,57 @@ func defaultAction(c *cli.Context) error {
 		return fmt.Errorf("创建AI提供商实例失败: %w", err)
 	}
 
-	fmt.Println("\n正在生成提交消息...")
-	message, err := aiProvider.GenerateCommitMessage(context.Background(), commitInfo)
-	if err != nil {
-		return fmt.Errorf("生成提交消息失败: %w", err)
-	}
+	// 生成提交消息的循环 (支持重新生成)
+	for {
+		fmt.Println("\n正在生成提交消息...")
+		message, err := aiProvider.GenerateCommitMessage(context.Background(), commitInfo)
+		if err != nil {
+			return fmt.Errorf("生成提交消息失败: %w", err)
+		}
 
-	// 显示生成的消息
-	fmt.Printf("\n生成的提交消息:\n")
-	fmt.Printf("标题: %s\n", message.Title)
-	if message.Body != "" {
-		fmt.Printf("正文:\n%s\n", message.Body)
-	}
+		// 显示生成的消息并让用户选择操作
+		action, err := interactive.ShowCommitMessage(message.Title, message.Body)
+		if err != nil {
+			return fmt.Errorf("交互式选择失败: %w", err)
+		}
 
-	// 确认提交
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("\n是否要使用这个消息提交？[Y/n] ")
-	answer, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("读取用户输入失败: %w", err)
-	}
-	answer = strings.TrimSpace(strings.ToLower(answer))
-	if answer == "" || answer == "y" {
 		commitMessage := message.Title
 		if message.Body != "" {
 			commitMessage += "\n\n" + message.Body
 		}
-		if err := repo.Commit(commitMessage); err != nil {
-			return err
-		}
-		fmt.Println("✓ 已提交更改")
-	} else {
-		fmt.Println("提交已取消")
-	}
 
-	return nil
+		switch action {
+		case interactive.ActionAccept:
+			if err := repo.Commit(commitMessage); err != nil {
+				return err
+			}
+			fmt.Println("✓ 已提交更改")
+			return nil
+
+		case interactive.ActionEdit:
+			edited, err := interactive.EditMessage(commitMessage)
+			if err != nil {
+				return fmt.Errorf("编辑消息失败: %w", err)
+			}
+			if strings.TrimSpace(edited) == "" {
+				fmt.Println("提交消息为空，操作取消")
+				return nil
+			}
+			if err := repo.Commit(edited); err != nil {
+				return err
+			}
+			fmt.Println("✓ 已提交更改")
+			return nil
+
+		case interactive.ActionRegenerate:
+			// 继续循环，重新生成
+			continue
+
+		case interactive.ActionCancel:
+			fmt.Println("提交已取消")
+			return nil
+		}
+	}
 }
 
 // 添加版本信息处理函数

@@ -60,5 +60,5 @@ config.json
 config.toml 
 
 # Go
-aicommit
+/aicommit
 .aicommit

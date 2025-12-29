@@ -443,10 +443,169 @@ Fixes #123`, typeDesc)
 	}
 }
 
+// DefaultMaxDiffLength 默认最大 diff 字符数（约 8000 字符 ≈ 2000 tokens）
+const DefaultMaxDiffLength = 8000
+
+// MaxLinesPerFile 每个文件最大保留的变更行数
+const MaxLinesPerFile = 50
+
+// TruncateDiff 智能截断过长的 diff 内容
+// 保留文件头信息，对每个文件的变更内容进行截断
+func (p *OpenAIProvider) TruncateDiff(diff string, maxLength int) string {
+	if diff == "" {
+		return ""
+	}
+
+	// 如果 diff 小于限制，直接返回
+	if len(diff) <= maxLength {
+		return diff
+	}
+
+	// 按文件分割 diff（使用 "diff --git" 作为分隔符）
+	const diffSeparator = "diff --git"
+	parts := strings.Split(diff, diffSeparator)
+
+	if len(parts) <= 1 {
+		// 单个文件或无法识别格式，直接截断
+		return truncateSingleDiff(diff, maxLength)
+	}
+
+	// 计算文件数量
+	numFiles := len(parts) - 1 // 第一个元素是空的或非 diff 内容
+	if numFiles <= 0 {
+		return truncateSingleDiff(diff, maxLength)
+	}
+
+	// 预留 100 字符给截断提示
+	availableLength := maxLength - 100
+	if availableLength < 200 {
+		availableLength = 200
+	}
+
+	var result strings.Builder
+	truncated := false
+	currentLength := 0
+
+	for i, part := range parts {
+		if i == 0 {
+			// 跳过第一个空元素
+			if strings.TrimSpace(part) != "" {
+				result.WriteString(part)
+				currentLength += len(part)
+			}
+			continue
+		}
+
+		fileDiff := diffSeparator + part
+
+		// 检查是否还有足够空间
+		remainingSpace := availableLength - currentLength
+		if remainingSpace <= 100 {
+			// 空间不足，添加截断提示后退出
+			truncated = true
+			break
+		}
+
+		if len(fileDiff) <= remainingSpace {
+			// 这个文件完整放入
+			result.WriteString(fileDiff)
+			currentLength += len(fileDiff)
+		} else {
+			// 需要截断这个文件
+			truncatedPart := truncateFileDiff(fileDiff, remainingSpace)
+			result.WriteString(truncatedPart)
+			currentLength += len(truncatedPart)
+			truncated = true
+			break
+		}
+	}
+
+	finalResult := result.String()
+
+	// 如果有截断，添加提示
+	if truncated {
+		finalResult = strings.TrimRight(finalResult, "\n") + "\n\n... [truncated: diff too large] ...\n"
+	}
+
+	return finalResult
+}
+
+// truncateSingleDiff 截断单个 diff 内容
+func truncateSingleDiff(diff string, maxLength int) string {
+	if len(diff) <= maxLength {
+		return diff
+	}
+
+	// 保留前面部分，添加截断提示
+	truncateAt := maxLength - 50 // 留出空间给截断提示
+	if truncateAt < 100 {
+		truncateAt = 100
+	}
+
+	// 尝试在行边界截断
+	lastNewline := strings.LastIndex(diff[:truncateAt], "\n")
+	if lastNewline > 0 {
+		truncateAt = lastNewline
+	}
+
+	return diff[:truncateAt] + "\n\n... [truncated: diff too large] ...\n"
+}
+
+// truncateFileDiff 截断单个文件的 diff，保留头部信息
+func truncateFileDiff(fileDiff string, maxLength int) string {
+	if len(fileDiff) <= maxLength {
+		return fileDiff
+	}
+
+	lines := strings.Split(fileDiff, "\n")
+	var result strings.Builder
+	currentLength := 0
+
+	for i, line := range lines {
+		lineWithNewline := line + "\n"
+		newLength := currentLength + len(lineWithNewline)
+
+		// 保留头部信息（前几行通常是头部）
+		isHeader := strings.HasPrefix(line, "diff --git") ||
+			strings.HasPrefix(line, "---") ||
+			strings.HasPrefix(line, "+++") ||
+			strings.HasPrefix(line, "@@") ||
+			strings.HasPrefix(line, "index ")
+
+		if isHeader || i < 5 {
+			// 总是保留头部行
+			result.WriteString(lineWithNewline)
+			currentLength = newLength
+			continue
+		}
+
+		// 检查是否超出限制
+		if newLength > maxLength-50 {
+			// 添加截断提示
+			remaining := len(lines) - i
+			result.WriteString(fmt.Sprintf("\n... [truncated: %d more lines] ...\n", remaining))
+			break
+		}
+
+		result.WriteString(lineWithNewline)
+		currentLength = newLength
+	}
+
+	return result.String()
+}
+
 // GenerateCommitMessage 使用 OpenAI API 生成提交消息
 func (p *OpenAIProvider) GenerateCommitMessage(ctx context.Context, info *CommitInfo) (*CommitMessage, error) {
+	// 截断过长的 diff 内容
+	truncatedDiff := p.TruncateDiff(info.DiffContent, DefaultMaxDiffLength)
+	truncatedInfo := &CommitInfo{
+		FilesChanged: info.FilesChanged,
+		DiffContent:  truncatedDiff,
+		BranchName:   info.BranchName,
+	}
+
 	// 准备用户提示
-	userPrompt := p.GetUserPrompt(info, p.BuildFilesList(info.FilesChanged))
+	userPrompt := p.GetUserPrompt(truncatedInfo, p.BuildFilesList(truncatedInfo.FilesChanged))
 	systemPrompt := p.GetSystemPrompt()
 
 	// 创建聊天请求
