@@ -282,8 +282,10 @@ func ShowCommitMessage(title, body string) (CommitAction, error) {
 	if body != "" {
 		fmt.Println("│")
 		for _, line := range strings.Split(body, "\n") {
-			if len(line) > 58 {
-				line = line[:55] + "..."
+			// 使用 rune 切片来正确处理多字节字符
+			runes := []rune(line)
+			if len(runes) > 55 {
+				line = string(runes[:52]) + "..."
 			}
 			fmt.Printf("│ %s\n", line)
 		}
