@@ -514,7 +514,6 @@ func (p *OpenAIProvider) TruncateDiff(diff string, maxLength int) string {
 			// 需要截断这个文件
 			truncatedPart := truncateFileDiff(fileDiff, remainingSpace)
 			result.WriteString(truncatedPart)
-			currentLength += len(truncatedPart)
 			truncated = true
 			break
 		}

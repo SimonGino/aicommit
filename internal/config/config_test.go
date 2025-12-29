@@ -14,14 +14,17 @@ func setupTestConfig(t *testing.T) (string, func()) {
 		t.Fatalf("创建临时目录失败: %v", err)
 	}
 
-	// 保存原始 HOME 目录
+	// 保存原始环境变量
 	originalHome := os.Getenv("HOME")
+	originalUserProfile := os.Getenv("USERPROFILE")
 
-	// 设置临时 HOME 目录
+	// 设置临时目录 (HOME for Unix, USERPROFILE for Windows)
 	os.Setenv("HOME", tmpDir)
+	os.Setenv("USERPROFILE", tmpDir)
 
 	cleanup := func() {
 		os.Setenv("HOME", originalHome)
+		os.Setenv("USERPROFILE", originalUserProfile)
 		os.RemoveAll(tmpDir)
 	}
 

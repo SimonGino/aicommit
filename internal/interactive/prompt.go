@@ -47,7 +47,7 @@ func readSingleKey() (byte, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer term.Restore(fd, oldState)
+	defer func() { _ = term.Restore(fd, oldState) }()
 
 	buf := make([]byte, 1)
 	_, err = os.Stdin.Read(buf)
