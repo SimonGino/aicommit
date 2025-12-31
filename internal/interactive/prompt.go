@@ -257,7 +257,7 @@ func ShowFileStatusAndSelect(staged, modified, untracked []string) (string, erro
 
 	// 根据按键返回对应的操作
 	for _, opt := range options {
-		if string(key) == opt.Key || (len(opt.Key) == 1 && strings.ToLower(string(key)) == strings.ToLower(opt.Key)) {
+		if strings.EqualFold(string(key), opt.Key) {
 			return opt.Action, nil
 		}
 	}
