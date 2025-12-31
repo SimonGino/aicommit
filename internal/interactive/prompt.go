@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/manifoldco/promptui"
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
 )
 
@@ -57,35 +58,105 @@ func readSingleKey() (byte, error) {
 	return buf[0], nil
 }
 
+// displayWidth calculate the display width of a string (handles ANSI codes and CJK chars)
+func displayWidth(s string) int {
+	// Remove ANSI escape codes
+	cleaned := s
+	for {
+		start := strings.Index(cleaned, "\033[")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(cleaned[start:], "m")
+		if end == -1 {
+			break
+		}
+		cleaned = cleaned[:start] + cleaned[start+end+1:]
+	}
+	// Use runewidth to correctly calculate CJK character width (2 columns each)
+	return runewidth.StringWidth(cleaned)
+}
+
+// printBox print content in a box with full borders
+func printBox(title string, lines []string, width int) {
+	// Calculate the actual width needed
+	titleWidth := displayWidth(title)
+
+	// Box width = "│ " + content + " │" = width + 2 for content area
+	// Top border: ┌─ + title + ─...─ + ┐
+	// We need: total width = 2 (┌─) + titleWidth + remaining dashes + 1 (┐)
+	// Content line width = 2 (│ ) + width + 2 ( │) = width + 4
+	// So top border should also be width + 4 total characters
+
+	// Top border (title in the border)
+	topBorderWidth := width + 2 - titleWidth - 1 // -1 for the initial ─ after ┌
+	if topBorderWidth < 1 {
+		topBorderWidth = 1
+	}
+	fmt.Println("┌─" + title + strings.Repeat("─", topBorderWidth) + "┐")
+
+	// Content lines
+	for _, line := range lines {
+		lineWidth := displayWidth(line)
+		padding := width - lineWidth
+		if padding < 0 {
+			padding = 0
+		}
+		fmt.Printf("│ %s%s │\n", line, strings.Repeat(" ", padding))
+	}
+
+	// Bottom border: width + 2 for ─ to match │ content │
+	fmt.Println("└" + strings.Repeat("─", width+2) + "┘")
+}
+
 // ShowFileStatusAndSelect 显示文件状态并让用户选择操作
 // 返回: "use-staged", "select-files", "stage-all", "cancel"
 func ShowFileStatusAndSelect(staged, modified, untracked []string) (string, error) {
-	// 显示文件状态
-	fmt.Println("\n检测到以下变更:")
-	fmt.Println()
+	// 准备要显示的行
+	var lines []string
+	maxWidth := 60 // default box width
 
 	if len(staged) > 0 {
-		fmt.Println("已暂存 (Staged):")
+		lines = append(lines, "")
+		lines = append(lines, "\033[1m已暂存 (Staged):\033[0m")
 		for _, f := range staged {
-			fmt.Printf("  \033[32m✓\033[0m %s\n", f)
+			line := fmt.Sprintf("  \033[32m✓\033[0m %s", f)
+			lines = append(lines, line)
+			// Update max width if needed
+			if w := displayWidth(line) + 2; w > maxWidth {
+				maxWidth = w
+			}
 		}
-		fmt.Println()
 	}
 
 	if len(modified) > 0 {
-		fmt.Println("未暂存 (Modified):")
+		lines = append(lines, "")
+		lines = append(lines, "\033[1m未暂存 (Modified):\033[0m")
 		for _, f := range modified {
-			fmt.Printf("  \033[33m•\033[0m %s\n", f)
+			line := fmt.Sprintf("  \033[33m•\033[0m %s", f)
+			lines = append(lines, line)
+			if w := displayWidth(line) + 2; w > maxWidth {
+				maxWidth = w
+			}
 		}
-		fmt.Println()
 	}
 
 	if len(untracked) > 0 {
-		fmt.Println("未跟踪 (Untracked):")
+		lines = append(lines, "")
+		lines = append(lines, "\033[1m未跟踪 (Untracked):\033[0m")
 		for _, f := range untracked {
-			fmt.Printf("  \033[36m+\033[0m %s\n", f)
+			line := fmt.Sprintf("  \033[36m+\033[0m %s", f)
+			lines = append(lines, line)
+			if w := displayWidth(line) + 2; w > maxWidth {
+				maxWidth = w
+			}
 		}
+	}
+
+	// Display the box
+	if len(lines) > 0 {
 		fmt.Println()
+		printBox("检测到以下变更", lines, maxWidth)
 	}
 
 	// 检查是否有变更
@@ -97,57 +168,114 @@ func ShowFileStatusAndSelect(staged, modified, untracked []string) (string, erro
 		return "cancel", nil
 	}
 
-	// 显示选项
-	fmt.Println("请选择操作:")
+	// 准备选项列表
+	type Option struct {
+		Key       string
+		Label     string
+		Action    string
+		IsDefault bool
+	}
+
+	var options []Option
+	var defaultAction string
+
+	// Default option comes first
 	if hasStaged {
-		fmt.Println("  [a] 使用当前暂存区内容生成提交消息")
+		// When staged files exist, "use staged" is default
+		options = append(options, Option{
+			Key:       "u",
+			Label:     "使用当前暂存区内容生成提交消息",
+			Action:    "use-staged",
+			IsDefault: true,
+		})
+		defaultAction = "use-staged"
 	}
+
 	if hasUnstaged {
-		fmt.Println("  [s] 选择要暂存的文件")
-		fmt.Println("  [A] 暂存所有变更 (git add .)")
+		isDefault := !hasStaged // default only when no staged files
+		options = append(options, Option{
+			Key:       "a",
+			Label:     "暂存所有变更并生成提交消息",
+			Action:    "stage-all",
+			IsDefault: isDefault,
+		})
+		if isDefault {
+			defaultAction = "stage-all"
+		}
+		options = append(options, Option{
+			Key:       "s",
+			Label:     "选择要暂存的文件",
+			Action:    "select-files",
+			IsDefault: false,
+		})
 	}
-	fmt.Println("  [c] 取消")
-	fmt.Print("\n请按键选择: ")
+
+	options = append(options, Option{
+		Key:       "q",
+		Label:     "取消",
+		Action:    "cancel",
+		IsDefault: false,
+	})
+
+	// 显示选项框
+	var optionLines []string
+	optionMaxWidth := 40
+
+	for _, opt := range options {
+		var line string
+		if opt.IsDefault {
+			line = fmt.Sprintf("  \033[1m[%s]\033[0m %s \033[90m(默认)\033[0m", opt.Key, opt.Label)
+		} else {
+			line = fmt.Sprintf("  [%s] %s", opt.Key, opt.Label)
+		}
+		optionLines = append(optionLines, line)
+		if w := displayWidth(line) + 2; w > optionMaxWidth {
+			optionMaxWidth = w
+		}
+	}
+
+	optionLines = append(optionLines, "")
+	optionLines = append(optionLines, "\033[90m提示: 输入字母或直接按回车选择默认选项\033[0m")
+
+	fmt.Println()
+	printBox("请选择操作", optionLines, optionMaxWidth)
+	fmt.Print("\n请输入选择: ")
 
 	// 读取单个字符
 	key, err := readSingleKey()
 	if err != nil {
 		return "cancel", err
 	}
+
+	// Handle Enter key (newline)
+	if key == 13 || key == 10 {
+		fmt.Println("(回车)")
+		return defaultAction, nil
+	}
+
 	fmt.Println(string(key)) // 回显按键
 
-	switch key {
-	case 'a':
-		if hasStaged {
-			return "use-staged", nil
+	// 根据按键返回对应的操作
+	for _, opt := range options {
+		if string(key) == opt.Key || (len(opt.Key) == 1 && strings.ToLower(string(key)) == strings.ToLower(opt.Key)) {
+			return opt.Action, nil
 		}
-	case 's':
-		if hasUnstaged {
-			return "select-files", nil
-		}
-	case 'A':
-		if hasUnstaged {
-			return "stage-all", nil
-		}
-	case 'c', 'C', 3: // 3 是 Ctrl+C
-		return "cancel", nil
 	}
 
-	// 如果按了无效键，使用 promptui 作为后备
-	fmt.Println("\n无效选择，请使用方向键选择:")
-	items := []string{}
-	if hasStaged {
-		items = append(items, "使用当前暂存区内容生成提交消息")
+	// 如果按了无效键,使用 promptui 作为后备
+	fmt.Println("\n\033[33m无效选择\033[0m,请使用方向键选择:")
+
+	var fallbackItems []string
+	var actions []string
+
+	for _, opt := range options {
+		fallbackItems = append(fallbackItems, opt.Label)
+		actions = append(actions, opt.Action)
 	}
-	if hasUnstaged {
-		items = append(items, "选择要暂存的文件")
-		items = append(items, "暂存所有变更 (git add .)")
-	}
-	items = append(items, "取消")
 
 	prompt := promptui.Select{
 		Label: "请选择操作",
-		Items: items,
+		Items: fallbackItems,
 	}
 
 	idx, _, err := prompt.Run()
@@ -155,15 +283,7 @@ func ShowFileStatusAndSelect(staged, modified, untracked []string) (string, erro
 		return "cancel", nil
 	}
 
-	selected := items[idx]
-	if strings.Contains(selected, "使用当前暂存区") {
-		return "use-staged", nil
-	} else if strings.Contains(selected, "选择要暂存") {
-		return "select-files", nil
-	} else if strings.Contains(selected, "暂存所有变更") {
-		return "stage-all", nil
-	}
-	return "cancel", nil
+	return actions[idx], nil
 }
 
 // SelectFilesToStage 多选文件进行暂存
@@ -275,22 +395,31 @@ const (
 
 // ShowCommitMessage 显示提交消息并让用户选择操作
 func ShowCommitMessage(title, body string) (CommitAction, error) {
-	// 显示消息框
-	fmt.Println("\n✔ 生成的提交消息：")
-	fmt.Println("┌" + strings.Repeat("─", 60) + "┐")
-	fmt.Printf("│ \033[1m%s\033[0m\n", title)
+	// 准备要显示的行
+	var lines []string
+	maxWidth := 60 // default width
+
+	// Add title (bold)
+	titleLine := fmt.Sprintf("\033[1m%s\033[0m", title)
+	lines = append(lines, titleLine)
+	if w := displayWidth(titleLine) + 2; w > maxWidth {
+		maxWidth = w
+	}
+
+	// Add body if present
 	if body != "" {
-		fmt.Println("│")
+		lines = append(lines, "")
 		for _, line := range strings.Split(body, "\n") {
-			// 使用 rune 切片来正确处理多字节字符
-			runes := []rune(line)
-			if len(runes) > 55 {
-				line = string(runes[:52]) + "..."
+			lines = append(lines, line)
+			if w := displayWidth(line) + 2; w > maxWidth {
+				maxWidth = w
 			}
-			fmt.Printf("│ %s\n", line)
 		}
 	}
-	fmt.Println("└" + strings.Repeat("─", 60) + "┘")
+
+	// Display the box
+	fmt.Println()
+	printBox("✔ 生成的提交消息", lines, maxWidth)
 
 	// 显示选项
 	fmt.Println("\n请选择操作:")
