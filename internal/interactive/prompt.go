@@ -421,12 +421,41 @@ func ShowCommitMessage(title, body string) (CommitAction, error) {
 	fmt.Println()
 	printBox("✔ 生成的提交消息", lines, maxWidth)
 
-	// 显示选项
-	fmt.Println("\n请选择操作:")
-	fmt.Println("  [a] 接受并提交")
-	fmt.Println("  [e] 编辑后提交")
-	fmt.Println("  [r] 重新生成")
-	fmt.Println("  [c] 取消")
+	// 准备选项框
+	type Option struct {
+		Key       string
+		Label     string
+		IsDefault bool
+	}
+
+	options := []Option{
+		{Key: "a", Label: "接受并提交", IsDefault: true},
+		{Key: "e", Label: "编辑后提交", IsDefault: false},
+		{Key: "r", Label: "重新生成", IsDefault: false},
+		{Key: "c", Label: "取消", IsDefault: false},
+	}
+
+	var optionLines []string
+	optionMaxWidth := 40
+
+	for _, opt := range options {
+		var line string
+		if opt.IsDefault {
+			line = fmt.Sprintf("  \033[1m[%s]\033[0m %s \033[90m(默认)\033[0m", opt.Key, opt.Label)
+		} else {
+			line = fmt.Sprintf("  [%s] %s", opt.Key, opt.Label)
+		}
+		optionLines = append(optionLines, line)
+		if w := displayWidth(line) + 2; w > optionMaxWidth {
+			optionMaxWidth = w
+		}
+	}
+
+	optionLines = append(optionLines, "")
+	optionLines = append(optionLines, "\033[90m提示: 输入字母或直接按回车选择默认选项\033[0m")
+
+	fmt.Println()
+	printBox("请选择操作", optionLines, optionMaxWidth)
 	fmt.Print("\n请按键选择: ")
 
 	// 读取单个字符
@@ -434,6 +463,13 @@ func ShowCommitMessage(title, body string) (CommitAction, error) {
 	if err != nil {
 		return ActionCancel, err
 	}
+
+	// Handle Enter key - default to accept
+	if key == 13 || key == 10 {
+		fmt.Println("(回车)")
+		return ActionAccept, nil
+	}
+
 	fmt.Println(string(key)) // 回显按键
 
 	switch key {
@@ -447,7 +483,7 @@ func ShowCommitMessage(title, body string) (CommitAction, error) {
 		return ActionCancel, nil
 	default:
 		// 无效按键，使用 promptui 后备
-		fmt.Println("\n无效选择，请使用方向键选择:")
+		fmt.Println("\n\033[33m无效选择\033[0m，请使用方向键选择:")
 		items := []string{
 			"接受并提交",
 			"编辑后提交",
