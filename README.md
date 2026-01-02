@@ -1,112 +1,112 @@
 # AI Commit
 
-[English](README_en.md) | 简体中文
+English | [简体中文](README.md)
 
-一个基于AI的Git提交消息生成工具，自动生成符合Conventional Commits规范的提交消息。
+An AI-powered Git commit message generator that automatically creates commit messages following the Conventional Commits specification.
 
-## 功能特点
+## Features
 
-- 🤖 **AI驱动** - 自动分析代码变更，生成标准化提交消息
-- 🎯 **交互式操作** - 支持键盘快捷键，快速选择操作
-- 📁 **灵活的文件选择** - 可选择暂存区、手动选择文件或暂存全部
-- ✏️ **消息编辑** - 支持编辑生成的消息或重新生成
-- 🔧 **配置检测** - 内置 `check` 命令验证配置和API连通性
-- 🌍 **多语言支持** - 英文、简体中文、繁体中文
-- ☁️ **多平台** - 支持 OpenAI 和 Azure OpenAI
-- 📊 **日报生成** - 根据Git提交历史生成工作日报
+- 🤖 **AI-Powered** - Automatically analyzes code changes and generates standardized commit messages
+- 🎯 **Interactive** - Keyboard shortcuts for quick operation selection
+- 📁 **Flexible File Selection** - Choose from staged files, select manually, or stage all
+- ✏️ **Message Editing** - Edit generated messages or regenerate them
+- 🔧 **Config Check** - Built-in `check` command to verify configuration and API connectivity
+- 🌍 **Multi-Language** - English, Simplified Chinese, Traditional Chinese
+- ☁️ **Multi-Platform** - Supports OpenAI and Azure OpenAI
+- 📊 **Daily Reports** - Generate work reports from Git commit history
 
-## 快速开始
+## Quick Start
 
-### 安装
+### Installation
 
 ```bash
 # Linux/macOS
 curl -fsSL https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.sh | sudo bash
 
-# Windows (以管理员身份运行 PowerShell)
+# Windows (Run PowerShell as Administrator)
 iwr -useb https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/install.ps1 | iex
 ```
 
-### 配置
+### Configuration
 
 ```bash
-# 配置 OpenAI API 密钥
+# Configure OpenAI API key
 aicommit config --api-key your-openai-api-key
 
-# 检查配置是否正确
+# Verify configuration
 aicommit check
 ```
 
-### 使用
+### Usage
 
 ```bash
-# 交互式提交（推荐）
+# Interactive commit (recommended)
 aicommit
 
-# 使用自定义消息
-aicommit -m "feat: 添加新功能"
+# Use custom message
+aicommit -m "feat: add new feature"
 ```
 
-## 交互式流程
+## Interactive Flow
 
-运行 `aicommit` 后，会显示交互式界面：
+Running `aicommit` displays an interactive interface:
 
 ```
-检测到以下变更:
+Detected changes:
 
-已暂存 (Staged):
+Staged:
   ✓ src/main.go
 
-未暂存 (Modified):
+Modified (unstaged):
   • config.json
 
-请选择操作:
-  [a] 使用当前暂存区内容生成提交消息
-  [s] 选择要暂存的文件
-  [A] 暂存所有变更 (git add .)
-  [c] 取消
+Select an action:
+  [a] Use current staged content to generate commit message
+  [s] Select files to stage
+  [A] Stage all changes (git add .)
+  [c] Cancel
 
-请按键选择: a
+Press key to select: a
 
-正在生成提交消息...
+Generating commit message...
 
-✔ 生成的提交消息：
+✔ Generated commit message:
 ┌────────────────────────────────────────────────────────────┐
-│ feat(main): 添加用户认证功能                                │
+│ feat(main): add user authentication                        │
 │                                                            │
-│ - 实现 JWT 令牌验证                                        │
-│ - 添加用户登录接口                                         │
+│ - Implement JWT token validation                           │
+│ - Add user login endpoint                                  │
 └────────────────────────────────────────────────────────────┘
 
-请选择操作:
-  [a] 接受并提交
-  [e] 编辑后提交
-  [r] 重新生成
-  [c] 取消
+Select an action:
+  [a] Accept and commit
+  [e] Edit before commit
+  [r] Regenerate
+  [c] Cancel
 
-请按键选择: a
+Press key to select: a
 
-✓ 已提交更改
+✓ Changes committed
 ```
 
-## 命令
+## Commands
 
-| 命令 | 说明 |
-|------|------|
-| `aicommit` | 交互式生成并提交 |
-| `aicommit -m "msg"` | 使用指定消息提交 |
-| `aicommit check` | 检查配置和API连通性 |
-| `aicommit config` | 配置设置 |
-| `aicommit report` | 生成日报 |
+| Command | Description |
+|---------|-------------|
+| `aicommit` | Interactive generate and commit |
+| `aicommit -m "msg"` | Commit with specified message |
+| `aicommit check` | Check configuration and API connectivity |
+| `aicommit config` | Configure settings |
+| `aicommit report` | Generate daily report |
 
-## 配置
+## Configuration
 
 ### OpenAI
 
 ```bash
 aicommit config --provider openai
 aicommit config --api-key sk-your-api-key
-aicommit config --model gpt-4o  # 可选
+aicommit config --model gpt-4o  # optional
 ```
 
 ### Azure OpenAI
@@ -118,40 +118,40 @@ aicommit config --base-url "https://your-resource.openai.azure.com/openai/deploy
 aicommit config --azure-api-version "2024-02-15-preview"
 ```
 
-### 语言设置
+### Language Settings
 
 ```bash
-aicommit config --language zh-CN  # 简体中文（默认）
-aicommit config --language en     # 英文
-aicommit config --language zh-TW  # 繁体中文
+aicommit config --language en     # English (default)
+aicommit config --language zh-CN  # Simplified Chinese
+aicommit config --language zh-TW  # Traditional Chinese
 ```
 
-## 日报生成
+## Daily Reports
 
 ```bash
-# 本周日报
+# This week's report
 aicommit report --this-week
 
-# 上周日报
+# Last week's report
 aicommit report --last-week
 
-# 指定日期范围
+# Specific date range
 aicommit report --since 2024-01-01 --until 2024-01-31
 ```
 
-## 提交消息格式
+## Commit Message Format
 
-遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+Follows the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
 ```
-<类型>(<范围>): <主题>
+<type>(<scope>): <subject>
 
-<正文>
+<body>
 ```
 
-支持的类型：`feat` | `fix` | `refactor` | `docs` | `style` | `test` | `chore`
+Supported types: `feat` | `fix` | `refactor` | `docs` | `style` | `test` | `chore`
 
-## 开发
+## Development
 
 ```bash
 git clone https://github.com/SimonGino/aicommit.git
@@ -161,16 +161,16 @@ go test ./...
 go build -o aicommit ./cmd/aicommit
 ```
 
-## 卸载
+## Uninstallation
 
 ```bash
 # Linux/macOS
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/uninstall.sh)"
 
-# Windows (以管理员身份运行 PowerShell)
+# Windows (Run PowerShell as Administrator)
 iwr -useb https://raw.githubusercontent.com/SimonGino/aicommit/main/scripts/uninstall.ps1 | iex
 ```
 
-## 许可证
+## License
 
 MIT
