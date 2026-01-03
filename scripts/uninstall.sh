@@ -6,10 +6,14 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# 获取实际用户（而非root）
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME=$(eval echo "~$REAL_USER")
+
 # 设置变量
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="aicommit"
-CONFIG_DIR="$HOME/.config/aicommit"
+CONFIG_DIR="$REAL_HOME/.config/aicommit"
 
 # 删除二进制文件
 if [ -f "$INSTALL_DIR/$BINARY_NAME" ]; then

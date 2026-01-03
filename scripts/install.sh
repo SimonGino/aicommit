@@ -6,10 +6,14 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# 获取实际用户（而非root）
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME=$(eval echo "~$REAL_USER")
+
 # 设置变量
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="aicommit"
-CONFIG_DIR="$HOME/.config/aicommit"
+CONFIG_DIR="$REAL_HOME/.config/aicommit"
 REPO="SimonGino/aicommit"
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
@@ -53,8 +57,9 @@ curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/$BINARY_NAME.tar.gz"
 cd "$TMP_DIR"
 tar xzf "$BINARY_NAME.tar.gz"
 
-# 创建配置目录
+# 创建配置目录（确保属于实际用户）
 mkdir -p "$CONFIG_DIR"
+chown -R "$REAL_USER" "$CONFIG_DIR"
 
 # 安装二进制文件
 mv "$BINARY_NAME" "$INSTALL_DIR/"
