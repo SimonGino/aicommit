@@ -101,27 +101,67 @@ aicommit -m "feat: 添加新功能"
 
 ## 配置
 
+配置文件位置：`~/.config/aicommit/config.json`
+
 ### OpenAI
+
+#### 命令行配置
 
 ```bash
 aicommit config --provider openai
 aicommit config --api-key sk-your-api-key
-aicommit config --model gpt-4o  # 可选
+aicommit config --model gpt-4o  # 可选，默认为 gpt-4o
+aicommit config --language zh-CN  # 可选，默认为 en
+```
+
+#### 标准配置文件示例
+
+```json
+{
+  "api_key": "sk-your-api-key-here",
+  "base_url": "",
+  "model": "gpt-4o",
+  "language": "zh-CN",
+  "provider": "openai",
+  "azure_api_version": ""
+}
 ```
 
 ### Azure OpenAI
 
+#### 命令行配置
+
 ```bash
 aicommit config --provider azure
-aicommit config --api-key your-azure-key
-aicommit config --base-url "https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions"
-aicommit config --azure-api-version "2024-02-15-preview"
+aicommit config --api-key your-azure-api-key
+aicommit config --base-url https://your-resource.openai.azure.com
+aicommit config --model your-deployment-name
+aicommit config --azure-api-version 2024-02-15-preview
+aicommit config --language zh-CN  # 可选
+```
+
+**重要说明：**
+- `--base-url` 应该只填写基础 URL（如 `https://your-resource.openai.azure.com`），不要包含完整的 API 路径
+- `--model` 应该填写你的 Azure OpenAI 部署名称（deployment name）
+- `--azure-api-version` 对于 Azure OpenAI 是必需的
+
+#### 标准配置文件示例
+
+```json
+{
+  "api_key": "your-azure-api-key-here",
+  "base_url": "https://your-resource.openai.azure.com",
+  "model": "gpt-4o-mini",
+  "language": "zh-CN",
+  "provider": "azure",
+  "azure_api_version": "2024-02-15-preview"
+}
 ```
 
 ### 语言设置
 
 ```bash
-aicommit config --language zh-CN  # 简体中文（默认）
+aicommit config --language zh-CN  # 简体中文
 aicommit config --language en     # 英文
 aicommit config --language zh-TW  # 繁体中文
 ```

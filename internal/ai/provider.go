@@ -90,6 +90,7 @@ type OpenAIProvider struct {
 	baseURL  string
 	model    string
 	language string
+	provider string
 	client   *openai.Client
 }
 
@@ -173,6 +174,7 @@ func NewProvider(apiKey, baseURL, model, language, provider, azureAPIVersion str
 		baseURL:  effectiveBaseURL,
 		model:    model,
 		language: language,
+		provider: provider,
 		client:   openai.NewClientWithConfig(config),
 	}
 

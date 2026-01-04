@@ -101,21 +101,61 @@ Press key to select: a
 
 ## Configuration
 
+Configuration file location: `~/.config/aicommit/config.json`
+
 ### OpenAI
+
+#### Command Line Configuration
 
 ```bash
 aicommit config --provider openai
 aicommit config --api-key sk-your-api-key
-aicommit config --model gpt-4o  # optional
+aicommit config --model gpt-4o  # optional, default: gpt-4o
+aicommit config --language en   # optional, default: en
+```
+
+#### Standard Config File Example
+
+```json
+{
+  "api_key": "sk-your-api-key-here",
+  "base_url": "",
+  "model": "gpt-4o",
+  "language": "en",
+  "provider": "openai",
+  "azure_api_version": ""
+}
 ```
 
 ### Azure OpenAI
 
+#### Command Line Configuration
+
 ```bash
 aicommit config --provider azure
-aicommit config --api-key your-azure-key
-aicommit config --base-url "https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions"
-aicommit config --azure-api-version "2024-02-15-preview"
+aicommit config --api-key your-azure-api-key
+aicommit config --base-url https://your-resource.openai.azure.com
+aicommit config --model your-deployment-name
+aicommit config --azure-api-version 2024-02-15-preview
+aicommit config --language en  # optional
+```
+
+**Important Notes:**
+- `--base-url` should be the base URL only (e.g., `https://your-resource.openai.azure.com`), NOT the full API path
+- `--model` should be your Azure OpenAI deployment name
+- `--azure-api-version` is required for Azure OpenAI
+
+#### Standard Config File Example
+
+```json
+{
+  "api_key": "your-azure-api-key-here",
+  "base_url": "https://your-resource.openai.azure.com",
+  "model": "gpt-4o-mini",
+  "language": "en",
+  "provider": "azure",
+  "azure_api_version": "2024-02-15-preview"
+}
 ```
 
 ### Language Settings

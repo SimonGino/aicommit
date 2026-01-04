@@ -27,7 +27,7 @@ func (p *OpenAIProvider) Check(ctx context.Context) *CheckResult {
 	result := &CheckResult{
 		ConfigExists:     true, // 如果能到这里，配置已存在
 		APIKeyConfigured: p.apiKey != "",
-		Provider:         "openai",
+		Provider:         p.provider,
 		Model:            p.model,
 		BaseURL:          p.baseURL,
 	}
