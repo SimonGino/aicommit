@@ -83,12 +83,22 @@ func (r *Repository) GetDiff(staged bool) (string, error) {
 }
 
 // GetCurrentBranch 获取当前分支名
+// 对于刚 git init 但尚未有任何 commit 的仓库，返回 unborn 分支名
 func (r *Repository) GetCurrentBranch() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = r.path
 	output, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("获取当前分支失败: %w", err)
+		// git init 后尚未有 commit，HEAD 无法解析
+		// 尝试从 symbolic-ref 获取 unborn 分支名
+		cmdSymRef := exec.Command("git", "symbolic-ref", "--short", "HEAD")
+		cmdSymRef.Dir = r.path
+		symRefOutput, symErr := cmdSymRef.Output()
+		if symErr == nil {
+			return strings.TrimSpace(string(symRefOutput)), nil
+		}
+		// 两种方式都失败，返回默认值 "main"
+		return "main", nil
 	}
 
 	return strings.TrimSpace(string(output)), nil
