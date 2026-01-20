@@ -229,10 +229,14 @@ func (r *Repository) StageFiles(files []string) error {
 		return nil
 	}
 
-	args := append([]string{"add"}, files...)
+	args := append([]string{"add", "--"}, files...)
 	cmd := exec.Command("git", args...)
 	cmd.Dir = r.path
-	if err := cmd.Run(); err != nil {
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if len(output) > 0 {
+			return fmt.Errorf("暂存文件失败: %s", strings.TrimSpace(string(output)))
+		}
 		return fmt.Errorf("暂存文件失败: %w", err)
 	}
 

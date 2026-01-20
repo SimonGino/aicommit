@@ -365,7 +365,8 @@ func SelectFilesToStage(staged, modified, untracked []string) ([]string, error) 
 
 	cursorPos := 0
 	totalItems := len(allFiles) + 2
-	totalLines := len(allFiles) + 5
+	// totalLines: 1(prompt) + 1(blank) + len(allFiles) + 1(blank) + 1(separator) + 2(confirm/cancel) = len(allFiles) + 6
+	totalLines := len(allFiles) + 6
 	firstRender := true
 
 	renderList := func() {
