@@ -41,7 +41,19 @@ func (f FileItem) StatusLabel() string {
 	}
 }
 
-// readSingleKey 读取单个按键
+type KeyEvent int
+
+const (
+	KeyUnknown KeyEvent = iota
+	KeyUp
+	KeyDown
+	KeyEnter
+	KeySpace
+	KeyEsc
+	KeyQ
+	KeyA
+)
+
 func readSingleKey() (byte, error) {
 	fd := int(os.Stdin.Fd())
 	oldState, err := term.MakeRaw(fd)
@@ -56,6 +68,42 @@ func readSingleKey() (byte, error) {
 		return 0, err
 	}
 	return buf[0], nil
+}
+
+func readKeyEvent() KeyEvent {
+	buf := make([]byte, 3)
+	n, err := os.Stdin.Read(buf)
+	if err != nil || n == 0 {
+		return KeyUnknown
+	}
+
+	if n == 1 {
+		switch buf[0] {
+		case 13, 10:
+			return KeyEnter
+		case 32:
+			return KeySpace
+		case 27:
+			return KeyEsc
+		case 'q', 'Q':
+			return KeyQ
+		case 'a', 'A':
+			return KeyA
+		}
+		return KeyUnknown
+	}
+
+	// Arrow keys escape sequence: ESC [ A/B
+	if n >= 3 && buf[0] == 27 && buf[1] == '[' {
+		switch buf[2] {
+		case 'A':
+			return KeyUp
+		case 'B':
+			return KeyDown
+		}
+	}
+
+	return KeyUnknown
 }
 
 // displayWidth calculate the display width of a string (handles ANSI codes and CJK chars)
@@ -286,9 +334,7 @@ func ShowFileStatusAndSelect(staged, modified, untracked []string) (string, erro
 	return actions[idx], nil
 }
 
-// SelectFilesToStage 多选文件进行暂存
 func SelectFilesToStage(staged, modified, untracked []string) ([]string, error) {
-	// 构建所有文件列表
 	var allFiles []FileItem
 
 	for _, f := range staged {
@@ -305,17 +351,32 @@ func SelectFilesToStage(staged, modified, untracked []string) ([]string, error) 
 		return nil, fmt.Errorf("没有可选择的文件")
 	}
 
-	fmt.Println("\n选择要暂存的文件 (按空格切换, 回车确认):")
-
-	// 使用简化的多选实现
 	selected := make([]bool, len(allFiles))
 	for i, f := range allFiles {
 		selected[i] = f.Selected
 	}
 
-	for {
-		// 显示当前状态
-		fmt.Println()
+	fd := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(fd)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = term.Restore(fd, oldState) }()
+
+	cursorPos := 0
+	totalItems := len(allFiles) + 2
+	totalLines := len(allFiles) + 5
+	firstRender := true
+
+	renderList := func() {
+		if !firstRender {
+			fmt.Printf("\033[%dA\r", totalLines)
+		}
+		firstRender = false
+
+		fmt.Print("\033[2K选择要暂存的文件 (↑↓移动, 空格切换, a全选/取消全选, 回车确认, q取消):\r\n")
+		fmt.Print("\033[2K\r\n")
+
 		for i, f := range allFiles {
 			checkbox := "[ ]"
 			if selected[i] {
@@ -330,57 +391,88 @@ func SelectFilesToStage(staged, modified, untracked []string) ([]string, error) 
 			case StatusUntracked:
 				statusColor = "\033[36m"
 			}
-			fmt.Printf("  %s %s%s\033[0m (%s)\n", checkbox, statusColor, f.Name, f.StatusLabel())
-		}
 
-		// 提供选项：使用 checkbox 样式
-		items := []string{}
-		for i, f := range allFiles {
-			checkbox := "[ ]"
-			if selected[i] {
-				checkbox = "[x]"
+			fmt.Print("\033[2K")
+			if i == cursorPos {
+				fmt.Printf("\033[7m▸ %s %s%s\033[0m (%s)\033[0m\r\n", checkbox, statusColor, f.Name, f.StatusLabel())
+			} else {
+				fmt.Printf("  %s %s%s\033[0m (%s)\r\n", checkbox, statusColor, f.Name, f.StatusLabel())
 			}
-			items = append(items, fmt.Sprintf("%s %s", checkbox, f.Name))
-		}
-		items = append(items, "────────────────────")
-		items = append(items, "✓ 确认选择")
-		items = append(items, "✗ 取消")
-
-		prompt := promptui.Select{
-			Label: "切换选择 (回车切换状态)",
-			Items: items,
-			Size:  15,
 		}
 
-		idx, _, err := prompt.Run()
-		if err != nil {
-			if err == promptui.ErrInterrupt {
+		fmt.Print("\033[2K\r\n")
+		fmt.Print("\033[2K────────────────────\r\n")
+
+		confirmIdx := len(allFiles)
+		cancelIdx := len(allFiles) + 1
+
+		fmt.Print("\033[2K")
+		if cursorPos == confirmIdx {
+			fmt.Print("\033[7m▸ ✓ 确认选择\033[0m\r\n")
+		} else {
+			fmt.Print("  ✓ 确认选择\r\n")
+		}
+
+		fmt.Print("\033[2K")
+		if cursorPos == cancelIdx {
+			fmt.Print("\033[7m▸ ✗ 取消\033[0m\r\n")
+		} else {
+			fmt.Print("  ✗ 取消\r\n")
+		}
+	}
+
+	renderList()
+
+	for {
+		key := readKeyEvent()
+
+		switch key {
+		case KeyUp:
+			if cursorPos > 0 {
+				cursorPos--
+			}
+		case KeyDown:
+			if cursorPos < totalItems-1 {
+				cursorPos++
+			}
+		case KeySpace:
+			if cursorPos < len(allFiles) {
+				selected[cursorPos] = !selected[cursorPos]
+			}
+		case KeyA:
+			allSelected := true
+			for _, s := range selected {
+				if !s {
+					allSelected = false
+					break
+				}
+			}
+			for i := range selected {
+				selected[i] = !allSelected
+			}
+		case KeyEnter:
+			if cursorPos == len(allFiles) {
+				fmt.Print("\r\n")
+				var result []string
+				for i, f := range allFiles {
+					if selected[i] {
+						result = append(result, f.Name)
+					}
+				}
+				return result, nil
+			} else if cursorPos == len(allFiles)+1 {
+				fmt.Print("\r\n")
 				return nil, nil
+			} else {
+				selected[cursorPos] = !selected[cursorPos]
 			}
-			return nil, err
-		}
-
-		if idx == len(items)-2 {
-			// 确认选择
-			break
-		} else if idx == len(items)-1 {
-			// 取消
+		case KeyQ, KeyEsc:
+			fmt.Print("\r\n")
 			return nil, nil
-		} else if idx < len(allFiles) {
-			// 切换选择状态
-			selected[idx] = !selected[idx]
 		}
-	}
 
-	// 返回选中的文件
-	var result []string
-	for i, f := range allFiles {
-		if selected[i] {
-			result = append(result, f.Name)
-		}
+		renderList()
 	}
-
-	return result, nil
 }
 
 // CommitAction 提交操作类型

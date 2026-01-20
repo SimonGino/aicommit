@@ -4,11 +4,56 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
 type Repository struct {
 	path string
+}
+
+func unquoteGitPath(s string) string {
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return s
+	}
+
+	s = s[1 : len(s)-1]
+	var result strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			switch s[i+1] {
+			case 'n':
+				result.WriteByte('\n')
+				i++
+			case 't':
+				result.WriteByte('\t')
+				i++
+			case '\\':
+				result.WriteByte('\\')
+				i++
+			case '"':
+				result.WriteByte('"')
+				i++
+			default:
+				if i+3 < len(s) && isOctalDigit(s[i+1]) && isOctalDigit(s[i+2]) && isOctalDigit(s[i+3]) {
+					octal := s[i+1 : i+4]
+					if val, err := strconv.ParseInt(octal, 8, 32); err == nil {
+						result.WriteByte(byte(val))
+						i += 3
+						continue
+					}
+				}
+				result.WriteByte(s[i])
+			}
+		} else {
+			result.WriteByte(s[i])
+		}
+	}
+	return result.String()
+}
+
+func isOctalDigit(b byte) bool {
+	return b >= '0' && b <= '7'
 }
 
 // GetRepo 获取Git仓库实例
@@ -31,7 +76,6 @@ func GetRepo(path string) (*Repository, error) {
 	return &Repository{path: path}, nil
 }
 
-// GetUnstagedChanges 获取未暂存的更改
 func (r *Repository) GetUnstagedChanges() ([]string, error) {
 	cmd := exec.Command("git", "diff", "--name-only")
 	cmd.Dir = r.path
@@ -44,11 +88,16 @@ func (r *Repository) GetUnstagedChanges() ([]string, error) {
 		return nil, nil
 	}
 
-	files := strings.Split(strings.TrimSpace(string(output)), "\n")
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	files := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line != "" {
+			files = append(files, unquoteGitPath(line))
+		}
+	}
 	return files, nil
 }
 
-// GetStagedChanges 获取已暂存的更改
 func (r *Repository) GetStagedChanges() ([]string, error) {
 	cmd := exec.Command("git", "diff", "--cached", "--name-only")
 	cmd.Dir = r.path
@@ -61,7 +110,13 @@ func (r *Repository) GetStagedChanges() ([]string, error) {
 		return nil, nil
 	}
 
-	files := strings.Split(strings.TrimSpace(string(output)), "\n")
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	files := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line != "" {
+			files = append(files, unquoteGitPath(line))
+		}
+	}
 	return files, nil
 }
 
@@ -126,7 +181,6 @@ func (r *Repository) StageAll() error {
 	return nil
 }
 
-// GetUntrackedFiles 获取未跟踪的文件
 func (r *Repository) GetUntrackedFiles() ([]string, error) {
 	cmd := exec.Command("git", "ls-files", "--others", "--exclude-standard")
 	cmd.Dir = r.path
@@ -139,7 +193,13 @@ func (r *Repository) GetUntrackedFiles() ([]string, error) {
 		return nil, nil
 	}
 
-	files := strings.Split(strings.TrimSpace(string(output)), "\n")
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	files := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if line != "" {
+			files = append(files, unquoteGitPath(line))
+		}
+	}
 	return files, nil
 }
 
